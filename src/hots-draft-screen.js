@@ -275,8 +275,10 @@ class HotsDraftScreen extends EventHandler {
                     // No ban yet
                     team.addBan(i, null);
                 } else {
-                    // Debug output
-                    banImg.write("debug/" + team.color + "_ban" + i + "_Test.jpg");
+                    if (this.generateDebugFiles) {
+                        // Debug output
+                        banImg.write("debug/" + team.color + "_ban" + i + "_Test.jpg");
+                    }
                     let matchBestHero = null;
                     let matchBestValue = 0;
                     for (let heroName in self.banImages) {

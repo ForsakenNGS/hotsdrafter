@@ -1,0 +1,14 @@
+<div class="player border mb-2 {% if player.isLocked() %}bg-light border-light text-dark{% else %}bg-dark border-dark text-info{% endif %}" data-index="0">
+    <div class="player-name border-bottom border-dark p-1" data-content="player-name">
+        {{ player.getName() }}
+    </div>
+    <div class="player-hero text-center p-1" data-content="player-hero">
+    {% if player.getCharacter() %}
+        <img src="../gfx/heroes/{{ player.getCharacter }}.jpg" alt="{{ player.getCharacter }}">
+        <span class="player-hero-name badge {% if player.isLocked() %}badge-light{% else %}badge-dark{% endif %}">{{ player.getCharacter() }}</span>
+    {% else %}
+        <div class="player-hero-none">?</div>
+        <span class="player-hero-name badge {% if player.isLocked() %}badge-light{% else %}badge-dark{% endif %}">---</span>
+    {% endif %}
+    </div>
+</div>

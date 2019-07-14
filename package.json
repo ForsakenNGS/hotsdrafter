@@ -1,0 +1,55 @@
+{
+  "name": "hotsdrafter",
+  "version": "1.0.0",
+  "description": "Predict and support drafts for running hots matches",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder && electron-builder --win",
+    "dist-linux": "electron-builder",
+    "dist-win": "electron-builder --win"
+  },
+  "keywords": [
+    "hots",
+    "draft",
+    "predition",
+    "helper"
+  ],
+  "author": "Jens N",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^5.0.6",
+    "electron-builder": "^21.0.15"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.3",
+    "iohook": "^0.5.1",
+    "jimp": "^0.6.4",
+    "screenshot-desktop": "^1.8.0",
+    "tesseract.js": "^2.0.0-alpha.11",
+    "twig": "^1.13.3"
+  },
+  "iohook": {
+    "targets": [
+      "electron-70"
+    ],
+    "platforms": [
+      "win32",
+      "linux"
+    ],
+    "arches": [
+      "x64",
+      "ia32"
+    ]
+  },
+  "build": {
+    "appId": "de.jensn.hotsdrafter",
+    "linux": {
+      "category": "Game"
+    },
+    "win": {
+      "target": "portable"
+    }
+  }
+}

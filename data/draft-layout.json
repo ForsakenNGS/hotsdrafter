@@ -1,0 +1,290 @@
+{
+  "screenSizeBase": {
+    "x": 1920,
+    "y": 1080
+  },
+  "colors": {
+    "mapName": [{
+      "color": { "r": 206, "g": 255, "b": 255 },
+      "toleranceLum": 25,
+      "toleranceHue": 15
+    }],
+    "banBackground": [{
+      "color": { "r": 16, "g": 4, "b": 24 },
+      "toleranceLum": 30,
+      "toleranceHue": 20
+    }],
+    "boost": [
+      {
+        "comment": "Brighter parts of the boost icon",
+        "color": { "r": 11, "g": 163, "b": 187 },
+        "toleranceLum": 25,
+        "toleranceHue": 20
+      },
+      {
+        "comment": "Darker parts of the boost icon",
+        "color": { "r": 11, "g": 78, "b": 98 },
+        "toleranceLum": 25,
+        "toleranceHue": 20
+      }
+    ],
+    "heroNamePrepick": {
+      "blue": [
+        {
+          "comment": "Blue team is currently picking/banning",
+          "color": { "r": 201, "g": 202, "b": 206 },
+          "toleranceLum": 25,
+          "toleranceHue": 20
+        },
+        {
+          "comment": "Blue team is currently picking/banning",
+          "color": { "r": 155, "g": 181, "b": 204 },
+          "toleranceLum": 25,
+          "toleranceHue": 10
+        },
+        {
+          "comment": "Red team is currently picking/banning",
+          "color": { "r": 76, "g": 61, "b": 85 },
+          "toleranceLum": 25,
+          "toleranceHue": 10
+        }
+      ]
+    },
+    "heroNameLocked": {
+      "blue": [
+        {
+          "comment": "Blue team is currently picking/banning",
+          "color": { "r": 1, "g": 6, "b": 30 },
+          "toleranceLum": 30,
+          "toleranceHue": 15
+        },
+        {
+          "comment": "Red team is currently picking/banning",
+          "color": { "r": 79, "g": 45, "b": 80 },
+          "toleranceLum": 30,
+          "toleranceHue": 15
+        }
+      ],
+      "red": [
+        {
+          "color": { "r": 53, "g": 3, "b": 7 },
+          "toleranceLum": 30,
+          "toleranceHue": 15
+        },
+        {
+          "color": { "r": 74, "g": 38, "b": 76 },
+          "toleranceLum": 30,
+          "toleranceHue": 15
+        }
+      ]
+    },
+    "heroBackgroundLocked": {
+      "blue": [
+        {
+          "comment": "Blue team is currently picking/banning",
+          "color": { "r": 161, "g": 177, "b": 213 },
+          "toleranceLum": 30,
+          "toleranceHue": 15
+        },
+        {
+          "comment": "Red team is currently picking/banning",
+          "color": { "r": 168, "g": 143, "b": 193 },
+          "toleranceLum": 30,
+          "toleranceHue": 15
+        }
+      ],
+      "red": [
+        {
+          "comment": "Red team is currently picking/banning",
+          "color": { "r": 217, "g": 152, "b": 158 },
+          "toleranceLum": 30,
+          "toleranceHue": 15
+        },
+        {
+          "comment": "Blue team is currently picking/banning",
+          "color": { "r": 166, "g": 134, "b": 197 },
+          "toleranceLum": 30,
+          "toleranceHue": 15
+        }
+      ]
+    },
+    "playerName": {
+      "blue": [
+        {
+          "comment": "Blue team is currently picking/banning",
+          "color": { "r": 145, "g": 186, "b": 207 },
+          "toleranceLum": 30,
+          "toleranceHue": 20
+        },
+        {
+          "comment": "Red team is currently picking/banning",
+          "color": { "r": 157, "g": 135, "b": 170 },
+          "toleranceLum": 30,
+          "toleranceHue": 20
+        }
+      ],
+      "red": [
+        {
+          "comment": "Red team is currently picking/banning",
+          "color": { "r": 208, "g": 101, "b": 107 },
+          "toleranceLum": 30,
+          "toleranceHue": 20
+        },
+        {
+          "comment": "Blue team is currently picking/banning",
+          "color": { "r": 151, "g": 130, "b": 164 },
+          "toleranceLum": 30,
+          "toleranceHue": 20
+        }
+      ]
+    }
+  },
+  "mapPos": {
+    "x": 700,
+    "y": 10
+  },
+  "mapSize": {
+    "x": 520,
+    "y": 28
+  },
+  "banSize": {
+    "x": 40,
+    "y": 54
+  },
+  "playerSize": {
+    "x": 206,
+    "y": 222
+  },
+  "nameSize": {
+    "x": 120,
+    "y": 126
+  },
+  "nameHeroSizeRotated": {
+    "x": 500,
+    "y": 70
+  },
+  "namePlayerSizeRotated": {
+    "x": 500,
+    "y": 62
+  },
+  "teams": {
+    "blue": {
+      "players": [
+        {
+          "index": 0,
+          "x": 3,
+          "y": 52
+        },
+        {
+          "index": 1,
+          "x": 102,
+          "y": 221
+        },
+        {
+          "index": 2,
+          "x": 3,
+          "y": 390
+        },
+        {
+          "index": 3,
+          "x": 102,
+          "y": 559
+        },
+        {
+          "index": 4,
+          "x": 3,
+          "y": 728
+        }
+      ],
+      "bans": [
+        {
+          "index": 0,
+          "x": 296,
+          "y": 31
+        },
+        {
+          "index": 1,
+          "x": 396,
+          "y": 31
+        },
+        {
+          "index": 2,
+          "x": 496,
+          "y": 31
+        }
+      ],
+      "name": {
+        "x": 10,
+        "y": 96,
+        "angle": 30.5
+      },
+      "nameHeroRotated": {
+        "x": 60,
+        "y": 260
+      },
+      "namePlayerRotated": {
+        "x": 110,
+        "y": 378
+      }
+    },
+    "red": {
+      "players": [
+        {
+          "index": 0,
+          "x": 1710,
+          "y": 52
+        },
+        {
+          "index": 1,
+          "x": 1615,
+          "y": 221
+        },
+        {
+          "index": 2,
+          "x": 1710,
+          "y": 390
+        },
+        {
+          "index": 3,
+          "x": 1615,
+          "y": 559
+        },
+        {
+          "index": 4,
+          "x": 1710,
+          "y": 728
+        }
+      ],
+      "bans": [
+        {
+          "index": 0,
+          "x": 1390,
+          "y": 31
+        },
+        {
+          "index": 1,
+          "x": 1490,
+          "y": 31
+        },
+        {
+          "index": 2,
+          "x": 1590,
+          "y": 31
+        }
+      ],
+      "name": {
+        "x": 78,
+        "y": 96,
+        "angle": -30.5
+      },
+      "nameHeroRotated": {
+        "x": 105,
+        "y": 256
+      },
+      "namePlayerRotated": {
+        "x": 54,
+        "y": 371
+      }
+    }
+  }
+}

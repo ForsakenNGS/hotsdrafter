@@ -1,0 +1,73 @@
+.main-flex {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+.main-flex .center-area {
+    overflow: auto;
+}
+.heroescounters-hero {
+    height: 92px;
+    width: 92px;
+    position: relative;
+}
+.heroescounters-hero .heroescounters-sort-value {
+    position: absolute;
+    bottom: 2px;
+    right: 0px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+.player-hero {
+    position: relative;
+}
+.player-hero .player-hero-none {
+    height: 92px;
+    width: 92px;
+    font-size: 60px;
+    background: #000000;
+}
+.player-hero .player-hero-name {
+    position: absolute;
+    bottom: 6px;
+}
+.team-blue .player-hero .player-hero-name {
+    right: 0px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+.team-red .player-hero .player-hero-name {
+    left: 0px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.ban-hero {
+    position: relative;
+}
+.ban-hero img {
+    max-height: 92px;
+    max-width: 92px;
+}
+.ban-hero .ban-hero-none {
+    height: 92px;
+    width: 92px;
+    font-size: 40px;
+    background: #000000;
+}
+.ban-hero .ban-hero-name {
+    position: absolute;
+    bottom: 6px;
+}
+.team-blue-bans .ban-hero .ban-hero-name {
+    right: 0px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+.team-red-bans .ban-hero .ban-hero-name {
+    left: 0px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}

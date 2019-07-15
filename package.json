@@ -22,6 +22,7 @@
   "devDependencies": {
     "@electron-forge/cli": "6.0.0-beta.33",
     "@electron-forge/maker-deb": "6.0.0-beta.33",
+    "@electron-forge/maker-flatpak": "^6.0.0-beta.41",
     "@electron-forge/maker-rpm": "6.0.0-beta.33",
     "@electron-forge/maker-squirrel": "6.0.0-beta.33",
     "@electron-forge/maker-zip": "6.0.0-beta.33",
@@ -57,7 +58,10 @@
   },
   "config": {
     "forge": {
-      "packagerConfig": {},
+      "packagerConfig": {
+        "asar": true,
+        "icon": "build/icon.png"
+      },
       "makers": [
         {
           "name": "@electron-forge/maker-squirrel",
@@ -77,6 +81,10 @@
         },
         {
           "name": "@electron-forge/maker-rpm",
+          "config": {}
+        },
+        {
+          "name": "@electron-forge/maker-flatpak",
           "config": {}
         }
       ]

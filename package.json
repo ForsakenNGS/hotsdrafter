@@ -4,11 +4,12 @@
   "description": "Predict and support drafts for running hots matches",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder && electron-builder --win",
-    "dist-linux": "electron-builder",
-    "dist-win": "electron-builder --win"
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "build": "yarn build-linux && yarn build-windows",
+    "build-linux": "electron-forge make --platform=linux",
+    "build-windows": "electron-forge make --platform=win32"
   },
   "keywords": [
     "hots",
@@ -19,14 +20,25 @@
   "author": "Jens N",
   "license": "ISC",
   "devDependencies": {
+    "@electron-forge/cli": "6.0.0-beta.33",
+    "@electron-forge/maker-deb": "6.0.0-beta.33",
+    "@electron-forge/maker-rpm": "6.0.0-beta.33",
+    "@electron-forge/maker-squirrel": "6.0.0-beta.33",
+    "@electron-forge/maker-zip": "6.0.0-beta.33",
+    "@fortawesome/fontawesome-free": "^5.9.0",
     "electron": "^5.0.6",
-    "electron-builder": "^21.0.15"
+    "electron-builder": "^21.0.15",
+    "electron-winstaller": "^3.0.4"
   },
   "dependencies": {
+    "bootstrap": "^4.3.1",
     "cheerio": "^1.0.0-rc.3",
+    "electron-squirrel-startup": "^1.0.0",
     "iohook": "^0.5.1",
     "jimp": "^0.6.4",
-    "screenshot-desktop": "^1.8.0",
+    "jquery": "^3.4.1",
+    "popper.js": "^1.15.0",
+    "screenshot-desktop": "../screenshot-desktop/",
     "tesseract.js": "^2.0.0-alpha.11",
     "twig": "^1.13.3"
   },
@@ -43,13 +55,31 @@
       "ia32"
     ]
   },
-  "build": {
-    "appId": "de.jensn.hotsdrafter",
-    "linux": {
-      "category": "Game"
-    },
-    "win": {
-      "target": "portable"
+  "config": {
+    "forge": {
+      "packagerConfig": {},
+      "makers": [
+        {
+          "name": "@electron-forge/maker-squirrel",
+          "config": {
+            "name": "hotsdrafter"
+          }
+        },
+        {
+          "name": "@electron-forge/maker-zip",
+          "platforms": [
+            "darwin"
+          ]
+        },
+        {
+          "name": "@electron-forge/maker-deb",
+          "config": {}
+        },
+        {
+          "name": "@electron-forge/maker-rpm",
+          "config": {}
+        }
+      ]
     }
   }
 }

@@ -12,6 +12,9 @@ class HotsDraftSuggestions extends EventHandler {
             self.update(this);
             self.trigger("change");
         });
+        this.screen.on("update-failed", function() {
+            self.trigger("error");
+        });
     }
     init() {
         throw new Error('Function "init" not implemented for current suggestion provider!');

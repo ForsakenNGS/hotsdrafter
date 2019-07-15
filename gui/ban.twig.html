@@ -1,7 +1,7 @@
 <div class="ban border bg-warning border-warning mx-1" data-index="0">
     <div class="ban-hero text-center p-1">
     {% if heroName is not null %}
-        <img src="../gfx/heroes/{{ heroName }}.jpg" alt="{{ heroName }}">
+        <img src="{{ draft.getHeroImage( heroName ) }}" alt="{{ heroName }}">
         <span class="ban-hero-name badge badge-warning">{{ heroName }}</span>
     {% else %}
         <div class="ban-hero-none">?</div>

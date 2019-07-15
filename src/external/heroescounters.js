@@ -42,6 +42,7 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
         }
         this.heroesByName[name.toUpperCase()] = hero;
         this.heroesById[id] = hero;
+        this.screen.addHero(name);
         // Download icon
         /*
         let gfxDir = path.resolve(__dirname+"/../..");
@@ -73,6 +74,10 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
         });
     }
     loadUpdateData(response) {
+        if (response.error) {
+            console.error("HeroesCoutners Update failed: "+response.error);
+            return;
+        }
         this.suggestions = {
             friend: [],
             enemy: [],

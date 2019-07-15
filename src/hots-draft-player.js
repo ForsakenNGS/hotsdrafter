@@ -8,7 +8,8 @@ class HotsDraftPlayer extends EventHandler {
         this.index = index;
         this.name = null;
         this.team = team;
-        this.character = null
+        this.character = null;
+        this.detectionError = false;
         this.locked = false;
     }
     getIndex() {
@@ -22,6 +23,9 @@ class HotsDraftPlayer extends EventHandler {
     }
     getCharacter() {
         return this.character;
+    }
+    isDetectionFailed() {
+        return this.detectionError;
     }
     isLocked() {
         return this.locked;
@@ -42,10 +46,14 @@ class HotsDraftPlayer extends EventHandler {
             this.trigger("change");
         }
     }
-    setCharacter(character) {
+    setCharacter(character, detectionError) {
+        if (typeof detectionError === "undefined") {
+            detectionError = false;
+        }
         if (this.character !== character) {
             let oldCharacter = this.character;
             this.character = character;
+            this.detectionError = detectionError;
             this.trigger("character-updated", character, oldCharacter);
             this.trigger("change");
         }

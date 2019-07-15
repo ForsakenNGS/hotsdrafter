@@ -2,13 +2,20 @@
     <div class="player-name border-bottom border-dark p-1" data-content="player-name">
         {{ player.getName() }}
     </div>
-    <div class="player-hero text-center p-1" data-content="player-hero">
-    {% if player.getCharacter() %}
-        <img src="../gfx/heroes/{{ player.getCharacter }}.jpg" alt="{{ player.getCharacter }}">
-        <span class="player-hero-name badge {% if player.isLocked() %}badge-light{% else %}badge-dark{% endif %}">{{ player.getCharacter() }}</span>
+    <div class="player-hero text-center p-1" data-content="player-hero"{% if player.isDetectionFailed() %} data-failed="{{ player.getCharacter }}"{% endif %}>
+    {% if player.isDetectionFailed() %}
+        <div class="player-hero-none">
+            <span class="fa fa-exclamation-triangle"></span>
+        </div>
     {% else %}
-        <div class="player-hero-none">?</div>
-        <span class="player-hero-name badge {% if player.isLocked() %}badge-light{% else %}badge-dark{% endif %}">---</span>
+        {% if player.getCharacter() %}
+            <img src="{{ draft.getHeroImage( player.getCharacter() ) }}" alt="{{ player.getCharacter() }}">
+        {% else %}
+            <div class="player-hero-none">?</div>
+        {% endif %}
     {% endif %}
+    </div>
+    <div class="player-hero-name text-center">
+        <small>{% if player.getCharacter() %}{{ player.getCharacter() }}{% else %}---{% endif %}</small>
     </div>
 </div>

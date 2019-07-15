@@ -1,9 +1,18 @@
 const jimp = require('jimp');
 
 class HotsHelpers {
+    static screenshotVirtualScreen(screen, x, y, width, height) {
+        let result = Object.assign({}, screen);
+        result.offsetX += x;
+        result.offsetY += y;
+        result.width = width;
+        result.height = height;
+        result.crop = width+"x"+height+"+"+x+"+"+y;
+        return result;
+    }
     static imageBackgroundMatch(image, colorMatches, tolerance) {
         if (typeof tolerance === "undefined") {
-            tolerance = 1;
+            tolerance = 2;
         }
         let matchCount = 0;
         let matchesPositive = colorMatches;
@@ -12,19 +21,35 @@ class HotsHelpers {
         if (HotsHelpers.imagePixelMatch(image, 0, 0, matchesPositive, matchesNegative)) {
             matchCount++;
         }
+        // Top Center
+        if (HotsHelpers.imagePixelMatch(image, Math.floor(image.bitmap.width / 2), 0, matchesPositive, matchesNegative)) {
+            matchCount++;
+        }
         // Top Right
         if (HotsHelpers.imagePixelMatch(image, image.bitmap.width-1, 0, matchesPositive, matchesNegative)) {
+            matchCount++;
+        }
+        // Center Left
+        if (HotsHelpers.imagePixelMatch(image, 0, Math.floor(image.bitmap.height / 2), matchesPositive, matchesNegative)) {
+            matchCount++;
+        }
+        // Center Right
+        if (HotsHelpers.imagePixelMatch(image, image.bitmap.width-1, Math.floor(image.bitmap.height / 2), matchesPositive, matchesNegative)) {
             matchCount++;
         }
         // Bottom Left
         if (HotsHelpers.imagePixelMatch(image, 0, image.bitmap.height-1, matchesPositive, matchesNegative)) {
             matchCount++;
         }
+        // Bottom Center
+        if (HotsHelpers.imagePixelMatch(image, 0, Math.floor(image.bitmap.height / 2), matchesPositive, matchesNegative)) {
+            matchCount++;
+        }
         // Bottom Right
         if (HotsHelpers.imagePixelMatch(image, image.bitmap.width-1, image.bitmap.height-1, matchesPositive, matchesNegative)) {
             matchCount++;
         }
-        return matchCount >= (4 - tolerance);
+        return matchCount >= (9 - tolerance);
     }
     static imageCompare(imageA, imageB, rasterSize) {
         if (typeof rasterSize === "undefined") {
@@ -40,6 +65,16 @@ class HotsHelpers {
             }
         }
         return score;
+    }
+    static imageFindColor(image, matchesColor) {
+        for (let x = 0; x < image.bitmap.width; x++) {
+            for (let y = 0; y < image.bitmap.height; y++) {
+                if (HotsHelpers.imagePixelMatch(image, x, y, matchesColor, [])) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
     static imageCleanupName(image, matchesPositive, matchesNegative, colorPositive, colorNegative) {
         if (typeof matchesNegative === "undefined") {
@@ -89,7 +124,7 @@ class HotsHelpers {
         let colorDiffLum = HotsHelpers.imageColorLumDiff(colorA, colorB);
         let colorDiffHue = HotsHelpers.imageColorHueDiff(colorA, colorB);
         let matchValue = Math.round(
-            1 + ((128 - colorDiffLum) * 127 / 128) + (Math.max(0, 90 - colorDiffHue) * 127 / 90)
+            1 + ((128 - colorDiffLum) * 63 / 128) + (Math.max(0, 90 - colorDiffHue) * 191 / 90)
         );
         return matchValue;
     }

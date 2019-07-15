@@ -72,8 +72,10 @@ provider.on("change", function() {
     displayDraftScreen(screen, provider);
 });
 provider.on("error", function(error) {
-    screen.clear();
-    displayWaitScreen();
+    if (screen.getMap() === null) {
+        screen.clear();
+        displayWaitScreen();
+    }
 });
 
 displayWaitScreen();
@@ -110,7 +112,7 @@ screenshot.listDisplays().then((displays) => {
         if (screen.getMap() !== null) {
             setTimeout(function() {
                 updateScreenshot();
-            }, 1000);
+            }, 100);
         }
     });
     // Start updating via hotkey

@@ -2,6 +2,12 @@ const { app, BrowserWindow } = require('electron');
 
 if (require('electron-squirrel-startup')) return app.quit();
 
+const Installer = require("./src/installer.js");
+if (Installer.handleSquirrelEvent()) {
+    // squirrel event handled and app will exit in 1000ms, so don't do anything else
+    return;
+}
+
 function createWindow () {
     // Erstelle das Browser-Fenster.
     let win = new BrowserWindow({

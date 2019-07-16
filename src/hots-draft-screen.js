@@ -4,13 +4,14 @@ const worker = new TesseractWorker();
 const jimp = require('jimp');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 
 // Local classes
 const EventHandler = require('./event-handler.js');
+const PromiseGroup = require('./promise-group.js');
 const HotsHelpers = require('./hots-helpers.js');
 const HotsDraftTeam = require('./hots-draft-team.js');
 const HotsDraftPlayer = require('./hots-draft-player.js');
+const HotsHeroes = require('./hots-heroes.js');
 
 // Data files
 const DraftLayout = require('../data/draft-layout');
@@ -32,9 +33,7 @@ class HotsDraftScreen extends EventHandler {
         this.map = null;
         this.teams = [];
         this.teamActive = null;
-        this.heroes = { name: [], corrections: {} };
-        // Load heroes and exceptions from disk
-        this.loadHeroes();
+        this.heroes = new HotsHeroes("en-us");
         // Update handling
         this.on("update-started", () => {
             this.updateActive = true;
@@ -45,34 +44,6 @@ class HotsDraftScreen extends EventHandler {
         this.on("update-failed", () => {
             this.updateActive = false;
         });
-    }
-    getStorageDir() {
-        let cacheDir = ".";
-        if(os.platform() === "linux") {
-            cacheDir = path.join(os.homedir(), "/.config/HotsDrafter");
-        } else {
-            cacheDir = path.join(os.homedir(), "/AppData/Roaming/HotsDrafter");
-        }
-        return cacheDir;
-    }
-    getHeroesFile() {
-        return path.join(this.getStorageDir(), "heroes.json");
-    }
-    loadHeroes() {
-        let storageFile = this.getHeroesFile();
-        // Read the data from file
-        if (!fs.existsSync(storageFile)) {
-            // Cache file does not exist! Initialize empty data object.
-            return;
-        }
-        let cacheContent = fs.readFileSync(storageFile);
-        try {
-            let cacheData = JSON.parse(cacheContent.toString());
-            this.heroes = cacheData;
-        } catch (e) {
-            console.error("Failed to read heroes data!");
-            console.error(e);
-        }
     }
     loadOffsets() {
         let baseSize = DraftLayout["screenSizeBase"];
@@ -115,83 +86,55 @@ class HotsDraftScreen extends EventHandler {
         }
         this.banImages = {};
         // Create cache directory if it does not exist
-        let storageDir = this.getStorageDir();
-        let banHeroDir = path.join(this.getStorageDir(), "heroes");
+        let storageDir = HotsHelpers.getStorageDir();
+        let banHeroDir = path.join(storageDir, "bans");
         if (!fs.existsSync( banHeroDir )) {
             fs.mkdirSync(banHeroDir, { recursive: true });
         }
         return new Promise((resolve, reject) => {
             const directoryPath = banHeroDir;
-            fs.readdir(directoryPath, (err, files) => {
-                if (err) {
-                    return console.log('Unable to scan directory: ' + err);
+            fs.readdir(directoryPath, (errorMessage, files) => {
+                if (errorMessage) {
+                    reject(new Error('Unable to scan directory: ' + errorMessage));
+                    return;
                 }
-                let pending = 1;
+                let loadPromiseGroup = new PromiseGroup();
                 let sizeBan = this.offsets["banSize"];
                 files.forEach((file) => {
                     let match = file.match(/^(.+)\.png$/);
                     if (match) {
                         // Load image
                         let heroName = match[1];
-                        pending++;
-                        jimp.read(directoryPath+"/"+file).then(async (image) => {
-                            this.banImages[heroName] = image;
-                            if (--pending <= 0) {
-                                resolve(true);
-                            }
-                        }).catch((error) => {
-                            console.error("Error loading image '"+directoryPath+"/"+file+"'");
-                            console.error(error);
-                            console.error(error.stack);
-                            reject(error);
-                        });
+                        loadPromiseGroup.add(
+                            jimp.read(directoryPath+"/"+file).then(async (image) => {
+                                this.banImages[heroName] = image;
+                            }).catch((error) => {
+                                console.error("Error loading image '"+directoryPath+"/"+file+"'");
+                                console.error(error);
+                                console.error(error.stack);
+                                reject(error);
+                            })
+                        );
                     }
                 });
-                if (--pending <= 0) {
+                loadPromiseGroup.then(() => {
                     resolve(true);
-                }
+                });
             });
         });
     }
-    saveHeroes() {
-        // Create cache directory if it does not exist
-        let storageDir = this.getStorageDir();
-        if (!fs.existsSync( storageDir )) {
-            fs.mkdirSync(storageDir, { recursive: true });
-        }
-        // Write specific type into cache
-        let storageFile = this.getHeroesFile();
-        fs.writeFileSync( storageFile, JSON.stringify(this.heroes) );
-    }
-    saveHeroBanImage(heroName, teamName, playerImage) {
+    saveHeroBanImage(heroName, banImageBase64) {
         if (!this.banImages.hasOwnProperty(heroName)) {
-            let banHeroImage = playerImage.clone();
-            let banHeroFile = path.join(this.getStorageDir(), "heroes", heroName+".png");
-            let banCropPos = this.offsets["teams"][teamName]["banCropPos"];
-            let banCropSize = this.offsets["banCropSize"];
-            banHeroImage.crop(banCropPos.x, banCropPos.y, banCropSize.x, banCropSize.y).normalize().write(banHeroFile);
-            this.banImages[heroName] = banHeroImage;
+            let buffer = Buffer.from(banImageBase64.substr( banImageBase64.indexOf("base64,") + 7 ), 'base64');
+            jimp.read(buffer).then((image) => {
+                let banHeroFile = path.join(HotsHelpers.getStorageDir(), "bans", heroName+".png");
+                image.write(banHeroFile);
+                this.banImages[heroName] = image;
+            });
         }
     }
     debug(generateDebugFiles) {
         this.generateDebugFiles = generateDebugFiles;
-    }
-    addHero(name) {
-        name = this.fixHeroName(name);
-        if (this.heroes.name.indexOf(name) === -1) {
-            this.heroes.name.push(name);
-            this.saveHeroes();
-        }
-    }
-    addHeroCorrection(from, to) {
-        this.heroes.corrections[from] = to;
-        this.saveHeroes();
-    }
-    correctHero(name) {
-        if (this.heroes.corrections.hasOwnProperty(name)) {
-            return this.heroes.corrections[name];
-        }
-        return name;
     }
     clear() {
         this.screenshot = null;
@@ -220,43 +163,35 @@ class HotsDraftScreen extends EventHandler {
                         reject(error);
                         return;
                     }
-                    let pending = 1;    // Ensure not to resolve before everything was started
+                    let detectPromiseGroup = new PromiseGroup();
                     // Teams
                     if (this.teams.length === 0) {
                         // Teams not yet detected
-                        pending++;
-                        this.detectTeams().then(() => {
-                            if (--pending <= 0) {
-                                resolve(true);
-                                this.trigger("update-done");
-                            }
-                        }).catch((error) => {
-                            reject(new Error("Teams not detected!"));
-                            console.error(error);
-                            console.error(error.stack);
-                        });
+                        detectPromiseGroup.add(
+                            this.detectTeams().catch((error) => {
+                                reject(new Error("Teams not detected!"));
+                                console.error(error);
+                                console.error(error.stack);
+                            })
+                        );
                     } else {
                         // Update teams
-                        pending++;
-                        this.updateTeams().then(() => {
-                            if (--pending <= 0) {
-                                resolve(true);
-                                this.trigger("update-done");
-                            }
-                        }).catch((error) => {
-                            reject(new Error("Failed to update teams!"));
-                            console.error(error);
-                            console.error(error.stack);
-                        });
+                        detectPromiseGroup.add(
+                            this.updateTeams().catch((error) => {
+                                reject(new Error("Failed to update teams!"));
+                                console.error(error);
+                                console.error(error.stack);
+                            })
+                        );
                     }
                     // Can finish now
-                    if (--pending <=0) {
+                    detectPromiseGroup.then(() => {
                         resolve(true);
                         this.trigger("update-done");
-                    }
+                    });
                 } catch (error) {
+                    this.trigger("update-failed", error);
                     reject(error);
-                    this.trigger("update-failed");
                 }
             }).catch((error) => {
                 console.error("Error loading screenshot '"+screenshotFile+"'");
@@ -349,24 +284,23 @@ class HotsDraftScreen extends EventHandler {
     }
     detectTeams() {
         return new Promise(async (resolve, reject) => {
-            let teamsPending = 2;
-            this.detectTeam("blue").then(() => {
-                if (--teamsPending <= 0) {
-                    resolve(true);
-                }
-            }).catch((error) => {
-                console.error(error);
-                console.log(error.stack);
-                reject(error);
-            });
-            this.detectTeam("red").then(() => {
-                if (--teamsPending <= 0) {
-                    resolve(true);
-                }
-            }).catch((error) => {
-                console.error(error);
-                console.log(error.stack);
-                reject(error);
+            let detectPromiseGroup = new PromiseGroup();
+            detectPromiseGroup.add(
+                this.detectTeam("blue").catch((error) => {
+                    console.error(error);
+                    console.log(error.stack);
+                    reject(error);
+                })
+            );
+            detectPromiseGroup.add(
+                this.detectTeam("red").catch((error) => {
+                    console.error(error);
+                    console.log(error.stack);
+                    reject(error);
+                })
+            );
+            detectPromiseGroup.then(() => {
+                resolve(true);
             });
         });
     }
@@ -374,39 +308,34 @@ class HotsDraftScreen extends EventHandler {
         return new Promise(async (resolve, reject) => {
             let team = new HotsDraftTeam(color);
             let playerPos = this.offsets["teams"][color]["players"];
-            let pending = 1;
+            let detectPromiseGroup = new PromiseGroup();
             this.addTeam(team);
             // Bans
-            pending++;
-            this.detectBans(team).then(() => {
-                if (--pending <= 0) {
-                    resolve(true);
-                }
-            }).catch((error) => {
-                reject(new Error("Bans not detected!"));
-                console.error(error);
-                console.error(error.stack);
-            });
+            detectPromiseGroup.add(
+                this.detectBans(team).catch((error) => {
+                    reject(new Error("Bans not detected!"));
+                    console.error(error);
+                    console.error(error.stack);
+                })
+            );
             // Players
             for (let i = 0; i < playerPos.length; i++) {
                 let player = new HotsDraftPlayer(i, team);
-                pending++;
-                this.detectPlayer(player).then(() => {
-                    team.addPlayer(player);
-                    this.trigger("player-detected", player);
-                    this.trigger("change");
-                    if (--pending <= 0) {
-                        resolve(true);
-                    }
-                }).catch((error) => {
-                    console.error(error);
-                    console.log(error.stack);
-                    reject(error);
-                });
+                detectPromiseGroup.add(
+                    this.detectPlayer(player).then(() => {
+                        team.addPlayer(player);
+                        this.trigger("player-detected", player);
+                        this.trigger("change");
+                    }).catch((error) => {
+                        console.error(error);
+                        console.log(error.stack);
+                        reject(error);
+                    })
+                );
             }
-            if (--pending <= 0) {
+            detectPromiseGroup.then(() => {
                 resolve(true);
-            }
+            });
         });
     }
     detectBans(team) {
@@ -418,7 +347,7 @@ class HotsDraftScreen extends EventHandler {
             // Check bans
             for (let i = 0; i < posBans.length; i++) {
                 let posBan = posBans[i];
-                let banImg = this.screenshot.clone().crop(posBan.x, posBan.y, sizeBan.x, sizeBan.y).scale(2);
+                let banImg = this.screenshot.clone().crop(posBan.x, posBan.y, sizeBan.x, sizeBan.y);
                 if (HotsHelpers.imageBackgroundMatch(banImg, DraftLayout["colors"]["banBackground"])) {
                     // No ban yet
                     team.addBan(i, null);
@@ -428,7 +357,7 @@ class HotsDraftScreen extends EventHandler {
                         banImg.write("debug/" + team.color + "_ban" + i + "_Test.png");
                     }
                     let matchBestHero = null;
-                    let matchBestValue = 0;
+                    let matchBestValue = 200;
                     for (let heroName in this.banImages) {
                         let heroValue = HotsHelpers.imageCompare(banImg, this.banImages[heroName]);
                         if (heroValue > matchBestValue) {
@@ -436,7 +365,14 @@ class HotsDraftScreen extends EventHandler {
                             matchBestValue = heroValue;
                         }
                     }
-                    team.addBan(i, matchBestHero);
+                    if (matchBestHero !== null) {
+                        team.addBan(i, matchBestHero);
+                    } else {
+                        team.addBan(i, "???");
+                        banImg.getBase64(jimp.MIME_PNG, (err, res) => {
+                            team.addBanImageData(i, res);
+                        });
+                    }
                 }
             }
             resolve(true);
@@ -458,7 +394,7 @@ class HotsDraftScreen extends EventHandler {
             let sizeHeroNameRot = this.offsets["nameHeroSizeRotated"];
             let sizePlayerNameRot = this.offsets["namePlayerSizeRotated"];
             try {
-                let detectionsPending = 0;
+                let detectPromiseGroup = new PromiseGroup();
                 let playerImg = this.screenshot.clone().crop(posPlayer.x, posPlayer.y, sizePlayer.x, sizePlayer.y);
                 if (this.generateDebugFiles) {
                     // Debug output
@@ -502,25 +438,20 @@ class HotsDraftScreen extends EventHandler {
                     }
                     if (heroVisible) {
                         // Detect hero name using tesseract
-                        detectionsPending++;
-                        heroImgName.getBufferAsync(jimp.MIME_PNG).then((buffer) => {
-                            worker.recognize(buffer, this.tessLangs, this.tessParams).then((result) => {
-                                let heroName = this.correctHero(result.text.trim());
-                                if (heroName !== "PICKING") {
-                                    let detectionError = (this.heroes.name.indexOf(heroName) === -1);
-                                    player.setCharacter(heroName, detectionError);
-                                    player.setLocked(heroLocked);
-                                    if (!detectionError) {
-                                        this.saveHeroBanImage(heroName, team.getColor(), playerImg);
+                        detectPromiseGroup.add(
+                            heroImgName.getBufferAsync(jimp.MIME_PNG).then((buffer) => {
+                                worker.recognize(buffer, this.tessLangs, this.tessParams).then((result) => {
+                                    let heroName = this.heroes.correct(result.text.trim());
+                                    if (heroName !== "PICKING") {
+                                        let detectionError = !this.heroes.exists(heroName);
+                                        player.setCharacter(heroName, detectionError);
+                                        player.setLocked(heroLocked);
                                     }
-                                }
-                                if (--detectionsPending <= 0) {
-                                    resolve(player);
-                                }
-                            }).catch((error) => {
-                                reject(error);
-                            });
-                        });
+                                }).catch((error) => {
+                                    reject(error);
+                                });
+                            })
+                        );
                     }
                 }
                 if (player.getName() === null) {
@@ -537,23 +468,24 @@ class HotsDraftScreen extends EventHandler {
                         playerImgName.write("debug/" + team.color + "_player" + index + "_PlayerNameTest.png");
                     }
                     // Detect player name using tesseract
-                    detectionsPending++;
-                    playerImgName.getBufferAsync(jimp.MIME_PNG).then((buffer) => {
-                        worker.recognize(buffer, this.tessLangs, this.tessParams).then((result) => {
-                            let playerName = result.text.trim();
-                            console.log(playerName);
-                            player.setName(playerName);
-                            if (--detectionsPending <= 0) {
-                                resolve(player);
-                            }
-                            resolve(player);
-                        }).catch((error) => {
-                            reject(error);
-                        });
-                    });
+                    detectPromiseGroup.add(
+                        playerImgName.getBufferAsync(jimp.MIME_PNG).then((buffer) => {
+                            worker.recognize(buffer, this.tessLangs, this.tessParams).then((result) => {
+                                let playerName = result.text.trim();
+                                console.log(playerName);
+                                player.setName(playerName);
+                            }).catch((error) => {
+                                reject(error);
+                            });
+                        })
+                    );
                 }
-                if (detectionsPending === 0) {
+                if (detectPromiseGroup.getCount() == 0) {
                     resolve(player);
+                } else {
+                    detectPromiseGroup.then(() => {
+                        resolve(player);
+                    });
                 }
             } catch (error) {
                 reject(error);
@@ -565,34 +497,31 @@ class HotsDraftScreen extends EventHandler {
             for (let t = 0; t < this.teams.length; t++) {
                 let team = this.teams[t];
                 let players = team.getPlayers();
-                let pending = 0;
+                let detectPromiseGroup = new PromiseGroup();
                 // Bans
-                pending++;
-                this.detectBans(team).then(() => {
-                    if (--pending <= 0) {
-                        resolve(true);
-                    }
-                }).catch((error) => {
-                    reject(new Error("Bans not detected!"));
-                    console.error(error);
-                    console.error(error.stack);
-                });
+                detectPromiseGroup.add(
+                    this.detectBans(team).catch((error) => {
+                        reject(new Error("Bans not detected!"));
+                        console.error(error);
+                        console.error(error.stack);
+                    })
+                );
                 // Players
                 for (let i = 0; i < players.length; i++) {
                     let player = players[i];
                     if (!player.isLocked()) {
-                        pending++;
-                        this.detectPlayer(player).then(() => {
-                            if (--pending <= 0) {
-                                resolve(true);
-                            }
-                        }).catch((error) => {
-                            console.error(error);
-                            console.log(error.stack);
-                            reject(error);
-                        });
+                        detectPromiseGroup.add(
+                            this.detectPlayer(player).catch((error) => {
+                                console.error(error);
+                                console.log(error.stack);
+                                reject(error);
+                            })
+                        );
                     }
                 }
+                detectPromiseGroup.then(() => {
+                    resolve(true);
+                });
             }
         });
     }
@@ -603,22 +532,17 @@ class HotsDraftScreen extends EventHandler {
             this.trigger("change");
         });
     }
-    fixHeroName(name) {
-        switch (name) {
-            case "ETC":
-                name = "E.T.C.";
-                break;
-        }
-        name = name.toUpperCase();
-        return name;
+
+    /**
+     * @returns {HotsHeroes}
+     */
+    getHeroes() {
+        return this.heroes;
     }
-    getHeroNames() {
-        return this.heroes.name;
-    }
-    getHeroImage(heroName) {
-        heroName = this.fixHeroName(heroName);
-        return path.join(this.getStorageDir(), "heroes", heroName+".png");
-    }
+
+    /**
+     * @returns {string|null}
+     */
     getMap() {
         return this.map;
     }

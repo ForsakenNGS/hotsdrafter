@@ -9,9 +9,9 @@
         </div>
     {% else %}
         {% if player.getCharacter() %}
-            <img src="{{ draft.getHeroImage( player.getCharacter() ) }}" alt="{{ player.getCharacter() }}">
+            <img class="rounded-circle" src="{{ draft.getHeroes().getImage( player.getCharacter() ) }}" alt="{{ player.getCharacter() }}">
         {% else %}
-            <div class="player-hero-none">?</div>
+            <div class="player-hero-none rounded-circle">?</div>
         {% endif %}
     {% endif %}
     </div>

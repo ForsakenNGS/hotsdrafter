@@ -1,6 +1,16 @@
-const jimp = require('jimp');
+const os = require('os');
+const path = require('path');
 
 class HotsHelpers {
+    static getStorageDir() {
+        let cacheDir = ".";
+        if(os.platform() === "linux") {
+            cacheDir = path.join(os.homedir(), "/.config/HotsDrafter");
+        } else {
+            cacheDir = path.join(os.homedir(), "/AppData/Roaming/HotsDrafter");
+        }
+        return cacheDir;
+    }
     static screenshotVirtualScreen(screen, x, y, width, height) {
         let result = Object.assign({}, screen);
         result.offsetX += x;

@@ -23,8 +23,14 @@
 .player-hero {
     position: relative;
 }
+.player-hero img {
+    background: #000000;
+    max-height: 64px;
+    max-width: 64px;
+}
 .player-hero .player-hero-none {
-    width: 98px;
+    display: inline-block;
+    width: 64px;
     height: 64px;
     font-size: 28px;
     background: #000000;
@@ -34,11 +40,13 @@
     position: relative;
 }
 .ban-hero img {
-    max-height: 92px;
-    max-width: 92px;
+    background: #000000;
+    max-height: 64px;
+    max-width: 64px;
 }
 .ban-hero .ban-hero-none {
-    width: 98px;
+    display: inline-block;
+    width: 64px;
     height: 64px;
     font-size: 28px;
     background: #000000;

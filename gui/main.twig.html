@@ -8,7 +8,7 @@
         <div class="d-flex">
             <div class="team-blue-bans d-flex text-left">
             {% for heroName in draft.getTeam("blue").getBans() %}
-                {% include "ban.twig.html" %}
+                {% include "ban.twig.html" with { index: loop.index0, heroName: heroName, team: draft.getTeam("blue") } %}
             {% endfor %}
             </div>
             <div class="flex-grow-1 text-center">
@@ -16,7 +16,7 @@
             </div>
             <div class="team-red-bans d-flex text-right">
             {% for heroName in draft.getTeam("red").getBans() %}
-                {% include "ban.twig.html" %}
+                {% include "ban.twig.html" with { index: loop.index0, heroName: heroName, team: draft.getTeam("red") } %}
             {% endfor %}
             </div>
         </div>

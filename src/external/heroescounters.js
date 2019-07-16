@@ -2,12 +2,6 @@
 const request = require('request');
 const cheerio = require('cheerio');
 
-/*
-const https = require('https');
-const fs = require('fs');
-const path = require('path');
-*/
-
 // Local classes
 const HotsDraftSuggestions = require('../hots-draft-suggestions.js');
 
@@ -42,17 +36,7 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
         }
         this.heroesByName[name.toUpperCase()] = hero;
         this.heroesById[id] = hero;
-        this.screen.addHero(name);
-        // Download icon
-        /*
-        let gfxDir = path.resolve(__dirname+"/../..");
-        if (!fs.existsSync(gfxDir+"/gfx/heroes/"+name.toUpperCase()+".jpg")) {
-            const file = fs.createWriteStream(gfxDir+"/gfx/heroes/"+name.toUpperCase()+".jpg");
-            const request = https.get("https://www.heroescounters.com"+image, function(response) {
-                response.pipe(file);
-            });
-        }
-        */
+        //this.screen.getHeroes().add(name);
     }
     loadCoreData(response) {
         let self = this;

@@ -9,7 +9,7 @@
             </div>
             <div class="modal-body">
                 <select id="correct-hero-name" class="form-control">
-                {% for heroName in draft.getHeroNames() %}
+                {% for heroName in draft.getHeroes().getNames() %}
                     <option value="{{ heroName }}">{{ heroName }}</option>
                 {% endfor %}
                 </select>

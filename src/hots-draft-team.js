@@ -7,10 +7,14 @@ class HotsDraftTeam extends EventHandler {
         super();
         this.color = color;
         this.bans = [null, null, null];
+        this.banImageData = [null, null, null];
         this.players = [];
     }
     addBan(index, hero) {
         this.bans[index] = hero;
+    }
+    addBanImageData(index, imageData) {
+        this.banImageData[index] = imageData;
     }
     addPlayer(player) {
         this.players.push(player);
@@ -25,6 +29,9 @@ class HotsDraftTeam extends EventHandler {
     }
     getBans() {
         return this.bans;
+    }
+    getBanImageData(index) {
+        return this.banImageData[index];
     }
     getPlayer(index) {
         if (index >= this.player.length) {

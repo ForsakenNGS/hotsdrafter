@@ -1,10 +1,14 @@
-<div class="ban border bg-warning border-warning mx-1" data-index="0">
+<div class="ban border {% if heroName != "???" %}bg-warning border-warning{% else %}bg-danger border-danger{% endif %} mx-1" data-index="0">
     <div class="ban-hero text-center p-1">
     {% if heroName is not null %}
-        <img src="{{ draft.getHeroImage( heroName ) }}" alt="{{ heroName }}">
-        <span class="ban-hero-name badge badge-warning">{{ heroName }}</span>
+        {% if heroName != "???" %}
+            <img class="rounded-circle" src="{{ draft.getHeroes().getImage( heroName ) }}" alt="{{ heroName }}">
+            <span class="ban-hero-name badge badge-warning">{{ heroName }}</span>
+        {% else %}
+            <img src="{{ team.getBanImageData(index) }}" alt="{{ heroName }}" data-failed="BAN">
+        {% endif %}
     {% else %}
-        <div class="ban-hero-none">?</div>
+        <div class="ban-hero-none rounded-circle">?</div>
     {% endif %}
     </div>
 </div>

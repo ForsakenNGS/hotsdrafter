@@ -256,6 +256,7 @@ class HotsDraftApp extends EventHandler {
             } else {
                 // Game ended
                 this.submitReplayData();
+                this.render();
                 this.trigger("game-ended");
                 if (this.debugEnabled) {
                     console.log("=== GAME ENDED ===");

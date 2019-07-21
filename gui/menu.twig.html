@@ -1,0 +1,14 @@
+<a href="#config" data-action="config" class="btn btn-light btn-sm">
+    Config
+</a>
+
+<script>
+jQuery(function() {
+
+    jQuery("[data-action=\"config\"]").on("click", function() {
+        app.getConfig().show();
+        app.render();
+    });
+
+});
+</script>

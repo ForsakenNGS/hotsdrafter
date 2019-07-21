@@ -5,6 +5,7 @@ class HotsDraftSuggestions extends EventHandler {
 
     constructor(draftScreen) {
         super();
+        this.downloadPromise = null;
         this.screen = draftScreen;
         // Update suggestions when the draft changes
         let self = this;
@@ -14,6 +15,16 @@ class HotsDraftSuggestions extends EventHandler {
         });
         this.screen.on("update-failed", function() {
             self.trigger("error");
+        });
+    }
+    downloadHotsData() {
+        this.screen.getHeroes().update().on("start", (downloaderPromise) => {
+            this.downloadPromise = downloaderPromise;
+            this.trigger("update-started");
+            this.downloadPromise.then(() => {
+                this.downloadPromise = null;
+                this.trigger("update-done");
+            });
         });
     }
     init() {

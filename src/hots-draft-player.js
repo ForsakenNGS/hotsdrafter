@@ -11,6 +11,8 @@ class HotsDraftPlayer extends EventHandler {
         this.character = null;
         this.detectionError = false;
         this.locked = false;
+        this.imagePlayerName = null;
+        this.imageHeroName = null;
     }
     getIndex() {
         return this.index;
@@ -23,6 +25,12 @@ class HotsDraftPlayer extends EventHandler {
     }
     getCharacter() {
         return this.character;
+    }
+    getImagePlayerName() {
+        return this.imagePlayerName;
+    }
+    getImageHeroName() {
+        return this.imageHeroName;
     }
     isDetectionFailed() {
         return this.detectionError;
@@ -68,6 +76,12 @@ class HotsDraftPlayer extends EventHandler {
             }
             this.trigger("change");
         }
+    }
+    setImagePlayerName(image) {
+        this.imagePlayerName = image;
+    }
+    setImageHeroName(image) {
+        this.imageHeroName = image;
     }
 }
 

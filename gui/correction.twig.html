@@ -21,3 +21,46 @@
         </div>
     </div>
 </div>
+<script>
+jQuery(function() {
+
+    // Manually correct failed detections
+    jQuery("[data-failed]").on("click", function () {
+        let heroNameFailed = jQuery(this).attr("data-failed");
+        if (heroNameFailed === "BAN") {
+            let imageData = jQuery(this).attr("src");
+            jQuery("#correct-hero-modal .btn-primary").off("click").on("click", function (e) {
+                e.preventDefault();
+                // Hide modal
+                jQuery("#correct-hero-modal").modal("hide");
+                // Save correction
+                app.screen.saveHeroBanImage(jQuery("#correct-hero-modal select").val(), imageData);
+                // Update app
+                app.setModalActive(false);
+                app.render();
+
+            });
+        } else {
+            jQuery("#correct-hero-modal .btn-primary").off("click").on("click", function (e) {
+                e.preventDefault();
+                // Hide modal
+                jQuery("#correct-hero-modal").modal("hide");
+                // Save correction
+                self.screen.getHeroes().addCorrection(heroNameFailed, jQuery("#correct-hero-modal select").val());
+                // Update app
+                app.setModalActive(false);
+                app.render();
+            });
+        }
+        jQuery("#correct-hero-modal").modal("show");
+        jQuery("#correct-hero-modal").off("hidden.bs.modal").on("hidden.bs.modal", function () {
+            // Update app
+            app.setModalActive(false);
+            app.render();
+        });
+        // Prevent re-rendering while the modal is open
+        app.setModalActive(true);
+    });
+
+});
+</script>

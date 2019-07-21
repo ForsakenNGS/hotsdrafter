@@ -12,6 +12,9 @@
             {% endfor %}
             </div>
             <div class="flex-grow-1 text-center">
+                <div class="main-menu">
+                    {% include "menu.twig.html" %}
+                </div>
                 <h3 data-content="map-name">{{ draft.getMap() }}</h3>
             </div>
             <div class="team-red-bans d-flex text-right">

@@ -1,7 +1,27 @@
 const os = require('os');
 const path = require('path');
+const fs = require('fs');
+
+let configuration = null;
 
 class HotsHelpers {
+    static detectGameStorageDir() {
+        let username = os.userInfo().username.toString();
+        if(os.platform() === "linux") {
+            return HotsHelpers.detectGameStorageDirDocuments( path.join(os.homedir(), ".wine", "drive_c", "users", username, "My Documents") )
+                || HotsHelpers.detectGameStorageDirDocuments( path.join(os.homedir(), "Documents") );
+        } else {
+            return HotsHelpers.detectGameStorageDirDocuments( path.join(os.homedir(), "My Documents") )
+                || HotsHelpers.detectGameStorageDirDocuments( path.join(os.homedir(), "Documents") );
+        }
+    }
+    static detectGameStorageDirDocuments(documentFolder) {
+        let target = path.join(documentFolder, "Heroes of the Storm");
+        if (fs.existsSync(target)) {
+            return target;
+        }
+        return null;
+    }
     static getStorageDir() {
         let cacheDir = ".";
         if(os.platform() === "linux") {
@@ -10,6 +30,13 @@ class HotsHelpers {
             cacheDir = path.join(os.homedir(), "/AppData/Roaming/HotsDrafter");
         }
         return cacheDir;
+    }
+    static getConfig() {
+        const Config = require('./config.js');
+        if (configuration === null) {
+            configuration = new Config();
+        }
+        return configuration;
     }
     static screenshotVirtualScreen(screen, x, y, width, height) {
         let result = Object.assign({}, screen);

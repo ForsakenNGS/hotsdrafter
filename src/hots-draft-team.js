@@ -34,7 +34,7 @@ class HotsDraftTeam extends EventHandler {
         return this.banImageData[index];
     }
     getPlayer(index) {
-        if (index >= this.player.length) {
+        if (index >= this.players.length) {
             return null;
         }
         return this.players[index];

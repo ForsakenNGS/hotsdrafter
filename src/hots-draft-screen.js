@@ -8,10 +8,10 @@ const fs = require('fs');
 // Local classes
 const EventHandler = require('./event-handler.js');
 const PromiseGroup = require('./promise-group.js');
-const HotsHelpers = require('./hots-helpers.js');
 const HotsDraftTeam = require('./hots-draft-team.js');
 const HotsDraftPlayer = require('./hots-draft-player.js');
 const HotsHeroes = require('./hots-heroes.js');
+const HotsHelpers = require('./hots-helpers.js');
 
 // Data files
 const DraftLayout = require('../data/draft-layout');
@@ -81,17 +81,18 @@ class HotsDraftScreen extends EventHandler {
         }
     }
     loadBanImages() {
-        if (this.banImages !== null) {
-            return true;
-        }
-        this.banImages = {};
-        // Create cache directory if it does not exist
-        let storageDir = HotsHelpers.getStorageDir();
-        let banHeroDir = path.join(storageDir, "bans");
-        if (!fs.existsSync( banHeroDir )) {
-            fs.mkdirSync(banHeroDir, { recursive: true });
-        }
         return new Promise((resolve, reject) => {
+            if (this.banImages !== null) {
+                resolve(true);
+                return;
+            }
+            this.banImages = {};
+            // Create cache directory if it does not exist
+            let storageDir = HotsHelpers.getStorageDir();
+            let banHeroDir = path.join(storageDir, "bans");
+            if (!fs.existsSync( banHeroDir )) {
+                fs.mkdirSync(banHeroDir, { recursive: true });
+            }
             const directoryPath = banHeroDir;
             fs.readdir(directoryPath, (errorMessage, files) => {
                 if (errorMessage) {
@@ -140,6 +141,7 @@ class HotsDraftScreen extends EventHandler {
         this.screenshot = null;
         this.map = null;
         this.teams = [];
+        this.trigger("change");
     }
     detect(screenshotFile) {
         // Start detection
@@ -148,57 +150,54 @@ class HotsDraftScreen extends EventHandler {
                 resolve(false);
                 return;
             }
-            jimp.read(screenshotFile).then(async (image) => {
+            jimp.read(screenshotFile).then((image) => {
                 this.trigger("update-started");
-                try {
-                    this.screenshot = image;
-                    this.loadOffsets();
-                    await this.loadBanImages();
-                    // Map not yet detected
-                    if (!await this.detectMap()) {
-                        reject(new Error("Map not detected!"));
-                        return;
-                    }
-                    if (!await this.detectTimer()) {
+                this.screenshot = image;
+                this.loadOffsets();
+                this.loadBanImages().then(() => {
+                    return this.detectMap().then(() => {
+                        return this.detectTimer().then(() => {
+                            let detectPromiseGroup = new PromiseGroup();
+                            // Teams
+                            if (this.teams.length === 0) {
+                                // Teams not yet detected
+                                detectPromiseGroup.add(
+                                    this.detectTeams().catch((error) => {
+                                        reject(new Error("Teams not detected!"));
+                                        console.error(error);
+                                        console.error(error.stack);
+                                    })
+                                );
+                            } else {
+                                // Update teams
+                                detectPromiseGroup.add(
+                                    this.updateTeams().catch((error) => {
+                                        reject(new Error("Failed to update teams!"));
+                                        console.error(error);
+                                        console.error(error.stack);
+                                    })
+                                );
+                            }
+                            // Can finish now
+                            detectPromiseGroup.then(() => {
+                                this.trigger("update-done");
+                                resolve(true);
+                            });
+                        }).catch((error) => {
+                            this.trigger("update-failed", error);
+                            reject(error);
+                        });
+                    }).catch((error) => {
+                        this.trigger("update-failed", error);
                         reject(error);
-                        return;
-                    }
-                    let detectPromiseGroup = new PromiseGroup();
-                    // Teams
-                    if (this.teams.length === 0) {
-                        // Teams not yet detected
-                        detectPromiseGroup.add(
-                            this.detectTeams().catch((error) => {
-                                reject(new Error("Teams not detected!"));
-                                console.error(error);
-                                console.error(error.stack);
-                            })
-                        );
-                    } else {
-                        // Update teams
-                        detectPromiseGroup.add(
-                            this.updateTeams().catch((error) => {
-                                reject(new Error("Failed to update teams!"));
-                                console.error(error);
-                                console.error(error.stack);
-                            })
-                        );
-                    }
-                    // Can finish now
-                    detectPromiseGroup.then(() => {
-                        resolve(true);
-                        this.trigger("update-done");
                     });
-                } catch (error) {
+                }).catch((error) => {
                     this.trigger("update-failed", error);
                     reject(error);
-                }
+                });
             }).catch((error) => {
-                console.error("Error loading screenshot '"+screenshotFile+"'");
-                console.error(error);
-                console.error(error.stack);
-                reject(error);
                 this.trigger("update-failed", error);
+                reject(error);
             });
         });
     }
@@ -445,6 +444,7 @@ class HotsDraftScreen extends EventHandler {
                                     if (heroName !== "PICKING") {
                                         let detectionError = !this.heroes.exists(heroName);
                                         player.setCharacter(heroName, detectionError);
+                                        player.setImageHeroName(buffer);
                                         player.setLocked(heroLocked);
                                     }
                                 }).catch((error) => {
@@ -474,6 +474,7 @@ class HotsDraftScreen extends EventHandler {
                                 let playerName = result.text.trim();
                                 console.log(playerName);
                                 player.setName(playerName);
+                                player.setImagePlayerName(buffer);
                             }).catch((error) => {
                                 reject(error);
                             });

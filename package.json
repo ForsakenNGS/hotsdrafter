@@ -36,7 +36,6 @@
     "cheerio": "^1.0.0-rc.3",
     "electron-squirrel-startup": "^1.0.0",
     "hots-replay": "^1.0.0",
-    "iohook": "^0.5.1",
     "jimp": "^0.6.4",
     "jquery": "^3.4.1",
     "popper.js": "^1.15.0",
@@ -44,19 +43,6 @@
     "seek-bzip": "^1.0.5",
     "tesseract.js": "^2.0.0-alpha.11",
     "twig": "^1.13.3"
-  },
-  "iohook": {
-    "targets": [
-      "electron-70"
-    ],
-    "platforms": [
-      "win32",
-      "linux"
-    ],
-    "arches": [
-      "x64",
-      "ia32"
-    ]
   },
   "config": {
     "forge": {
@@ -69,7 +55,7 @@
           "name": "@electron-forge/maker-squirrel",
           "config": {
             "name": "hotsdrafter",
-            "iconUrl": "https://github.com/ForsakenNGS/hotsdrafter/raw/master/build/icon.icon"
+            "iconUrl": "https://github.com/ForsakenNGS/hotsdrafter/raw/master/build/icon.ico"
           }
         },
         {

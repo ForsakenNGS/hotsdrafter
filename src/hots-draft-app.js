@@ -1,7 +1,6 @@
 // Nodejs dependencies
 const path = require('path');
 const request = require('request');
-const ioHook = require('iohook');
 const screenshot = require('screenshot-desktop');
 const Twig = require('twig');
 const HotsReplay = require('hots-replay');
@@ -41,7 +40,6 @@ class HotsDraftApp extends EventHandler {
         this.statusScreenshotPending = false;
         // Bind ready event
         this.on("ready", () => {
-            this.bindHotkeys();
             this.startDetection();
         });
         // Initialize
@@ -70,16 +68,6 @@ class HotsDraftApp extends EventHandler {
     debug(debugEnabled) {
         this.debugEnabled = debugEnabled;
         this.screen.debug(debugEnabled);
-    }
-    bindHotkeys() {
-        if (this.hotkeyUpdate === null) {
-            // Start updating via hotkey
-            this.hotkeyUpdate = ioHook.registerShortcut([29, 32], (keys) => {
-                this.screen.clear();
-                this.queueUpdate();
-            });
-        }
-        ioHook.start();
     }
     checkNextUpdate() {
         if (!this.statusGameActive && (this.screen.getMap() !== null)) {

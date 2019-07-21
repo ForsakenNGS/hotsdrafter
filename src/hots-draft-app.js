@@ -27,7 +27,7 @@ class HotsDraftApp extends EventHandler {
         });
         this.provider = new HeroesCountersProvider(this.screen);
         this.providerUpdated = false;
-        this.displays = [];
+        this.displays = null;
         this.hotkeyUpdate = null;
         // Status fields
         this.statusGameActive = false;
@@ -286,7 +286,7 @@ class HotsDraftApp extends EventHandler {
     }
     updateReadyState() {
         if (!this.ready) {
-            if (this.providerUpdated && (this.displays.length > 0)) {
+            if (this.providerUpdated && (this.displays !== null)) {
                 this.ready = true;
                 this.trigger("ready");
             }
@@ -297,7 +297,11 @@ class HotsDraftApp extends EventHandler {
             return;
         }
         this.statusScreenshotPending = true;
-        screenshot({ format: 'png', screen: this.displays[0].id }).then((image) => {
+        let screenshotOptions = { format: 'png' };
+        if (this.displays.length > 0) {
+            screenshotOptions.screen = this.displays[0].id;
+        }
+        screenshot(screenshotOptions).then((image) => {
             if (this.statusGameActive) {
                 this.statusScreenshotPending = false;
                 return;

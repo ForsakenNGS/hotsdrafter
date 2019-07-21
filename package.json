@@ -39,6 +39,7 @@
     "jimp": "^0.6.4",
     "jquery": "^3.4.1",
     "popper.js": "^1.15.0",
+    "request": "^2.88.0",
     "screenshot-desktop": "^1.8.0",
     "seek-bzip": "^1.0.5",
     "tesseract.js": "^2.0.0-alpha.11",
@@ -47,7 +48,9 @@
   "config": {
     "forge": {
       "packagerConfig": {
-        "asar": true,
+        "asar": {
+          "unpack": "**/node_modules/screenshot-desktop/lib/win32/{app.manifest,screenCapture_1.3.2.bat}"
+        },
         "icon": "build/icon.png"
       },
       "makers": [
@@ -55,7 +58,8 @@
           "name": "@electron-forge/maker-squirrel",
           "config": {
             "name": "hotsdrafter",
-            "iconUrl": "https://github.com/ForsakenNGS/hotsdrafter/raw/master/build/icon.ico"
+            "iconUrl": "https://github.com/ForsakenNGS/hotsdrafter/raw/master/build/icon.ico",
+            "setupIcon": "./build/icon.ico"
           }
         },
         {

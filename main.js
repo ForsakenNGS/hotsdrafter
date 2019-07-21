@@ -1,3 +1,4 @@
+const path = require('path');
 const { app, BrowserWindow } = require('electron');
 
 if (require('electron-squirrel-startup')) return app.quit();
@@ -13,6 +14,7 @@ function createWindow () {
     let win = new BrowserWindow({
         width: 1400,
         height: 900,
+        icon: path.join(__dirname, 'build/icon_64x64.png'),
         webPreferences: {
             nodeIntegration: true
         }

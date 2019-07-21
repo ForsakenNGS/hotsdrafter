@@ -277,7 +277,7 @@ class HotsDraftApp extends EventHandler {
                     playerName: player.getName(),
                     playerNameImage: player.getImagePlayerName(),
                     heroName: player.getCharacter(),
-                    heroNameImage: player.getImageHeroName()
+                    heroNameImage: (player.isLocked() ? player.getImageHeroName() : null)
                 });
             }
         }
@@ -290,7 +290,7 @@ class HotsDraftApp extends EventHandler {
                     playerName: player.getName(),
                     playerNameImage: player.getImagePlayerName(),
                     heroName: player.getCharacter(),
-                    heroNameImage: player.getImageHeroName()
+                    heroNameImage: (player.isLocked() ? player.getImageHeroName() : null)
                 });
             }
         }

@@ -1,0 +1,12 @@
+{% extends "../frame.twig.html" %}
+{% block content %}
+    <div class="text-center p-5">
+        {% if app.isGameActive() %}
+        <h1>Match in progress...</h1>
+        {% else %}
+        <h1>Waiting to start the draft...</h1>
+        {% endif %}
+        <h3>Please wait until the draft was detected.</h3>
+        <div class="spinner-border text-success"></div>
+    </div>
+{% endblock %}

@@ -19,11 +19,19 @@ class HotsDraftSuggestions extends EventHandler {
     }
     downloadHotsData() {
         this.screen.getHeroes().update().on("start", (downloaderPromise) => {
+            let failed = false;
             this.downloadPromise = downloaderPromise;
             this.trigger("update-started");
             this.downloadPromise.then(() => {
                 this.downloadPromise = null;
                 this.trigger("update-done");
+            }).catch((error) => {
+                failed = true;
+            }).finally(() => {
+                if (failed) {
+                    // Retry
+                    this.downloadHotsData();
+                }
             });
         });
     }

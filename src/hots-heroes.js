@@ -4,6 +4,7 @@ const cheerio = require('cheerio');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const jimp = require('jimp');
 
 // Local classes
 const PromiseGroup = require('./promise-group.js');
@@ -37,6 +38,7 @@ class HotsHeroes {
     downloadHeroIcon(heroName, heroImageUrl) {
         return new Promise((resolve, reject) => {
             let filename = path.join(HotsHelpers.getStorageDir(), "heroes", heroName+".png");
+            let filenameCrop = path.join(HotsHelpers.getStorageDir(), "heroes", heroName+"_crop.png");
             if (!fs.existsSync(filename)) {
                 try {
                     // Create cache directory if it does not exist
@@ -46,8 +48,18 @@ class HotsHeroes {
                     }
                     https.get(heroImageUrl, function(response) {
                         const file = fs.createWriteStream(filename);
-                        response.pipe(file);
-                        resolve();
+                        const stream = response.pipe(file);
+                        stream.on("finish", () => {
+                            jimp.read(filename).then(async (image) => {
+                                image.crop(10, 32, 108, 64).write(filenameCrop);
+                                resolve();
+                            }).catch((error) => {
+                                console.error("Error loading image '"+heroImageUrl+"'");
+                                console.error(error);
+                                console.error(error.stack);
+                                reject(error);
+                            })
+                        })
                     });
                 } catch(error) {
                     reject(error);
@@ -80,7 +92,7 @@ class HotsHeroes {
     }
     getImage(heroName) {
         heroName = this.fixName(heroName);
-        return path.join(HotsHelpers.getStorageDir(), "heroes", heroName+".png");
+        return path.join(HotsHelpers.getStorageDir(), "heroes", heroName+"_crop.png");
     }
     getFile() {
         return path.join(HotsHelpers.getStorageDir(), "heroes.json");

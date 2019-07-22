@@ -1,15 +1,16 @@
 {
   "name": "hotsdrafter",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Predict and support drafts for running hots matches",
   "main": "main.js",
   "scripts": {
     "start": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
-    "build": "yarn build-linux && yarn build-windows",
-    "build-linux": "electron-forge make --platform=linux",
-    "build-windows": "electron-forge make --platform=win32"
+    "make:all": "yarn make:linux && yarn make:win32",
+    "make:win32": "electron-forge make --platform=win32",
+    "make:linux": "electron-forge make --platform=linux",
+    "publish": "electron-forge publish"
   },
   "keywords": [
     "hots",
@@ -24,14 +25,17 @@
     "@electron-forge/maker-deb": "6.0.0-beta.33",
     "@electron-forge/maker-flatpak": "^6.0.0-beta.41",
     "@electron-forge/maker-rpm": "6.0.0-beta.33",
+    "@electron-forge/maker-snap": "^6.0.0-beta.43",
     "@electron-forge/maker-squirrel": "6.0.0-beta.33",
     "@electron-forge/maker-zip": "6.0.0-beta.33",
     "@fortawesome/fontawesome-free": "^5.9.0",
     "electron": "^5.0.6",
     "electron-builder": "^21.0.15",
+    "electron-forge-maker-appimage": "^21.1.2",
     "electron-winstaller": "^3.0.4"
   },
   "dependencies": {
+    "@electron-forge/publisher-github": "^6.0.0-beta.43",
     "bootstrap": "^4.3.1",
     "cheerio": "^1.0.0-rc.3",
     "electron-squirrel-startup": "^1.0.0",
@@ -47,6 +51,22 @@
   },
   "config": {
     "forge": {
+      "make_targets": {
+        "win32": [
+          "squirrel"
+        ],
+        "darwin": [
+          "zip",
+          "dmg"
+        ],
+        "linux": [
+          "deb",
+          "rpm",
+          "flatpak",
+          "snap",
+          "squirrel"
+        ]
+      },
       "packagerConfig": {
         "asar": {
           "unpack": "**/node_modules/screenshot-desktop/lib/win32/{app.manifest,screenCapture_1.3.2.bat}"
@@ -56,17 +76,15 @@
       "makers": [
         {
           "name": "@electron-forge/maker-squirrel",
+          "defaultPlatforms": [
+            "linux",
+            "win32"
+          ],
           "config": {
             "name": "hotsdrafter",
             "iconUrl": "https://github.com/ForsakenNGS/hotsdrafter/raw/master/build/icon.ico",
             "setupIcon": "./build/icon.ico"
           }
-        },
-        {
-          "name": "@electron-forge/maker-zip",
-          "platforms": [
-            "darwin"
-          ]
         },
         {
           "name": "@electron-forge/maker-deb",
@@ -78,7 +96,32 @@
         },
         {
           "name": "@electron-forge/maker-flatpak",
-          "config": {}
+          "config": {
+            "options": {
+              "categories": [
+                "Game"
+              ],
+              "productName": "Hots-Drafter",
+              "description": "Predict and support drafts for running hots matches",
+              "icon": "build/icon.png"
+            }
+          }
+        }
+      ],
+      "publishers": [
+        {
+          "name": "@electron-forge/publisher-github",
+          "platforms": [
+            "linux",
+            "win32"
+          ],
+          "config": {
+            "repository": {
+              "owner": "ForsakenNGS",
+              "name": "hotsdrafter"
+            },
+            "prerelease": true
+          }
         }
       ]
     }

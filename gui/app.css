@@ -1,7 +1,17 @@
+.navbar-main-menu {
+  -webkit-user-select: none;
+  -webkit-app-region: drag;
+}
+.navbar-main-menu .navbar-nav {
+  -webkit-app-region: no-drag;
+}
+.navbar-main-menu .navbar-brand-icon {
+  height: 32px;
+}
 .main-flex {
     position: absolute;
+    top: 60px;
     left: 0;
-    top: 0;
     right: 0;
     bottom: 0;
 }
@@ -9,8 +19,8 @@
     overflow: auto;
 }
 .heroescounters-hero {
-    height: 92px;
-    width: 92px;
+    height: 80px;
+    width: 80px;
     position: relative;
 }
 .heroescounters-hero .heroescounters-sort-value {
@@ -20,48 +30,26 @@
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
 }
-.player-hero {
-    position: relative;
-}
-.player-hero img {
-    background: #000000;
-    max-height: 64px;
-    max-width: 64px;
-}
-.player-hero .player-hero-none {
+.player-hero-none {
     display: inline-block;
-    width: 64px;
-    height: 64px;
+    min-height: 58px;
     font-size: 28px;
+    text-align: center;
     background: #000000;
 }
-
-.ban-hero {
-    position: relative;
-}
-.ban-hero img {
-    background: #000000;
-    max-height: 64px;
-    max-width: 64px;
-}
-.ban-hero .ban-hero-none {
+.ban-hero-none {
     display: inline-block;
-    width: 64px;
-    height: 64px;
+    min-height: 58px;
     font-size: 28px;
+    text-align: center;
     background: #000000;
 }
-.ban-hero .ban-hero-name {
-    position: absolute;
-    bottom: 6px;
+.team-blue .card,
+.team-read .card {
+    min-width: 92px;
 }
-.team-blue-bans .ban-hero .ban-hero-name {
-    right: 0px;
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-}
-.team-red-bans .ban-hero .ban-hero-name {
-    left: 0px;
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
+.team-blue-bans .card-img-top,
+.team-red-bans .card-img-top {
+    height: 64px;
+    width: auto;
 }

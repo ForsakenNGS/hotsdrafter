@@ -1,0 +1,59 @@
+<nav class="navbar navbar-main-menu navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary">
+    <a href="#" class="navbar-brand">
+        <img class="navbar-brand-icon" src="../build/icon_64x64.png" class="img-fluid">
+        Hots-Drafter
+        {% if app.debugEnabled %}
+            <span class="badge badge-info ml-3 debug-step">
+                {{ app.debugStep }}
+            </span>
+        {% endif %}
+    </a>
+    <ul class="navbar-nav ml-auto">
+        <li class="nav-item{% if pageActive=="main" or pageActive=="wait" or pageActive=="update" %} active{% endif %}">
+            <a href="#draft" data-action="draft" class="nav-link">
+                <i class="fa fa-users"></i>
+                Draft
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="#forceUpdate" data-action="forceUpdate" class="nav-link">
+                <i class="fa fa-sync"></i>
+                Force Update
+            </a>
+        </li>
+        <li class="nav-item{% if pageActive=="config" %} active{% endif %}">
+            <a href="#config" data-action="config" class="nav-link">
+                <i class="fa fa-cog"></i>
+                Config
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="#quit" data-action="quit" class="nav-link">
+                <i class="fa fa-times-circle"></i>
+            </a>
+        </li>
+    </ul>
+</nav>
+
+
+<script>
+jQuery(function() {
+
+    jQuery("[data-action=\"draft\"]").on("click", function() {
+        app.getConfig().hide();
+        app.render();
+    });
+    jQuery("[data-action=\"config\"]").on("click", function() {
+        app.getConfig().show();
+        app.render();
+    });
+    jQuery("[data-action=\"forceUpdate\"]").on("click", function() {
+        app.screen.clear();
+        app.update();
+    });
+    jQuery("[data-action=\"quit\"]").on("click", function() {
+        window.close();
+    });
+
+});
+</script>

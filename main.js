@@ -1,5 +1,6 @@
 const path = require('path');
 const { app, BrowserWindow } = require('electron');
+const Twig = require('twig');
 
 if (require('electron-squirrel-startup')) return app.quit();
 
@@ -14,6 +15,9 @@ function createWindow () {
     let win = new BrowserWindow({
         width: 1400,
         height: 900,
+        minWidth: 1000,
+        minHeight: 600,
+        frame: false,
         icon: path.join(__dirname, 'build/icon_64x64.png'),
         webPreferences: {
             nodeIntegration: true
@@ -22,7 +26,7 @@ function createWindow () {
 
     win.setMenuBarVisibility(false);
 
-    // and load the index.html of the app.
+    // and load the index.twig.html of the app.
     win.loadFile('gui/index.html');
 }
 

@@ -77,7 +77,7 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
         }
         this.sortSuggestions("blue");
         this.sortSuggestions("red");
-        this.trigger("change");
+        this.trigger("update-done");
         if (this.updatePending) {
             this.update();
         }

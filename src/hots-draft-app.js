@@ -7,28 +7,32 @@ const HotsReplay = require('hots-replay');
 
 // Local classes
 const EventHandler = require('./event-handler.js');
-const HeroesCountersProvider = require('../src/external/heroescounters.js');
 const HotsDraftScreen = require('../src/hots-draft-screen.js');
 const HotsHelpers = require('../src/hots-helpers.js');
 
 // Templates
-const templateMain = path.resolve(__dirname, "..", "gui", "main.twig.html");
-const templateWait = path.resolve(__dirname, "..", "gui", "wait.twig.html");
-const templateUpdate = path.resolve(__dirname, "..", "gui", "update.twig.html");
+const templates = {
+    "main": path.resolve(__dirname, "..", "gui", "pages", "main.twig.html"),
+    "config": path.resolve(__dirname, "..", "gui", "pages", "config.twig.html"),
+    "wait": path.resolve(__dirname, "..", "gui", "pages", "wait.twig.html"),
+    "update": path.resolve(__dirname, "..", "gui", "pages", "update.twig.html")
+};
 
 class HotsDraftApp extends EventHandler {
 
-    constructor() {
+    constructor(window) {
         super();
         this.debugEnabled = false;
+        this.debugStep = "Initializing...";
+        this.document = window.document;
+        this.window = window;
         this.screen = new HotsDraftScreen();
         this.screen.on("update-done", () => {
             this.checkNextUpdate();
         });
-        this.provider = new HeroesCountersProvider(this.screen);
+        this.provider = null;
         this.providerUpdated = false;
         this.displays = null;
-        this.hotkeyUpdate = null;
         // Status fields
         this.statusGameActive = false;
         this.statusGameSaveFile = { file: null, mtime: 0, updated: 0 };
@@ -45,12 +49,18 @@ class HotsDraftApp extends EventHandler {
         // Initialize
         this.init();
     }
-    init() {
+    createProvider() {
+        const ProviderName = HotsHelpers.getConfig().getOption("provider");
+        const Provider = require('../src/external/'+ProviderName+'.js');
+        return new Provider(this.screen);
+    }
+    initProvider() {
         // Init provider
+        this.provider = this.createProvider();
+        this.providerUpdated = false;
         this.provider.init();
         this.provider.on("change", () => {
             this.update();
-            this.render();
         });
         this.provider.on("update-started", () => {
             this.render();
@@ -60,8 +70,15 @@ class HotsDraftApp extends EventHandler {
             this.trigger("provider-updated");
             this.updateReadyState();
             this.render();
+            // Debug output
+            if (this.debugEnabled) {
+                console.log("=== PROVIDER UPDATED ===");
+            }
         });
         this.provider.downloadHotsData();
+    }
+    init() {
+        this.initProvider();
         // Detect displays
         this.detectDisplays();
     }
@@ -81,7 +98,7 @@ class HotsDraftApp extends EventHandler {
     isGameActive() {
         if (this.statusGameSaveFile !== null) {
             let latestSaveAge = ((new Date()).getTime() - this.statusGameSaveFile.mtime) / 1000;
-            if (this.statusGameLastReplay.mtime < this.statusGameSaveFile.mtime) {
+            if ((this.statusGameSaveFile.mtime - this.statusGameLastReplay.mtime) / 1000 > 30) {
                 return (latestSaveAge < 150);
             } else {
                 // New replay available, game is done!
@@ -100,12 +117,37 @@ class HotsDraftApp extends EventHandler {
     detectDisplays() {
         screenshot.listDisplays().then((displays) => {
             this.displays = displays;
+            // Update config
+            let displayPrimary = null;
+            let displayConfig = HotsHelpers.getConfig().getOption("gameDisplay");
+            let displayConfigFound = false;
+            for (let i = 0; i < displays.length; i++) {
+                if (displays[i].id == displayConfig) {
+                    displayConfigFound = true;
+                    break;
+                }
+                if (displays[i].primary) {
+                    displayPrimary = displays[i].id;
+                }
+            }
+            if (!displayConfigFound) {
+                HotsHelpers.getConfig().setOption("gameDisplay", (displayPrimary !== null ? displayPrimary : null));
+            }
+            // Update status
             this.trigger("displays-detected");
             this.updateReadyState();
+            // Debug output
+            if (this.debugEnabled) {
+                console.log("=== DISPLAYS DETECTED ===");
+            }
         });
     }
     startDetection() {
         this.update();
+    }
+    setDebugStep(step) {
+        this.debugStep = step;
+        jQuery(".debug-step").text(step);
     }
     queueUpdate() {
         if (!this.statusUpdatePending) {
@@ -253,6 +295,7 @@ class HotsDraftApp extends EventHandler {
         }
     }
     updateGameData() {
+        this.setDebugStep("Checking game data...");
         this.statusGameData = {
             map: this.screen.getMap(),
             players: []
@@ -301,11 +344,13 @@ class HotsDraftApp extends EventHandler {
         if (this.displays.length > 0) {
             screenshotOptions.screen = this.displays[0].id;
         }
+        this.setDebugStep("Capturing screenshot...");
         screenshot(screenshotOptions).then((image) => {
             if (this.statusGameActive) {
                 this.statusScreenshotPending = false;
                 return;
             }
+            this.setDebugStep("Analysing screenshot...");
             this.screen.detect(image).catch((error) => {
                 if (this.debugEnabled) {
                     if (this.screen.getMap() === null) {
@@ -341,35 +386,40 @@ class HotsDraftApp extends EventHandler {
             // Do not re-render while a correction modal is active
             return;
         }
-        let self = this;
-        let container = jQuery(".content");
         // Render config template?
         let config = HotsHelpers.getConfig();
         if (config.isVisible()) {
-            config.render(container, jQuery);
+            this.renderPage("config");
             return;
         }
-        // Handler for the render result
-        let renderResult = (error, html) => {
-            if (error) {
-                console.error(error);
-            } else {
-                jQuery(container).html(html);
-            }
-        };
         // App ready?
         if (this.ready) {
             if (this.statusDraftActive) {
                 // Render draft screen
-                Twig.renderFile(templateMain, { app: this, draft: this.screen, provider: this.provider }, renderResult);
+                this.renderPage("main");
             } else {
                 // Show wait screen while not drafting
-                Twig.renderFile(templateWait, { app: this }, renderResult);
+                this.renderPage("wait");
             }
         } else {
             // Show update screen
-            Twig.renderFile(templateUpdate, { app: this }, renderResult);
+            this.renderPage("update");
         }
+    }
+    renderPage(ident) {
+        Twig.renderFile(templates[ident], {
+            app: this,
+            draft: this.screen,
+            provider: this.provider,
+            config: HotsHelpers.getConfig(),
+            pageActive: ident
+        }, (error, html) => {
+            if (error) {
+                console.error(error);
+            } else {
+                jQuery(".page").html(html);
+            }
+        });
     }
 }
 

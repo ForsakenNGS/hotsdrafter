@@ -31,10 +31,10 @@ jQuery(function() {
             let imageData = jQuery(this).attr("src");
             jQuery("#correct-hero-modal .btn-primary").off("click").on("click", function (e) {
                 e.preventDefault();
-                // Hide modal
-                jQuery("#correct-hero-modal").modal("hide");
                 // Save correction
                 app.screen.saveHeroBanImage(jQuery("#correct-hero-modal select").val(), imageData);
+                // Hide modal
+                jQuery("#correct-hero-modal").modal("hide");
                 // Update app
                 app.setModalActive(false);
                 app.render();
@@ -43,10 +43,10 @@ jQuery(function() {
         } else {
             jQuery("#correct-hero-modal .btn-primary").off("click").on("click", function (e) {
                 e.preventDefault();
+                // Save correction
+                app.screen.getHeroes().addCorrection(heroNameFailed, jQuery("#correct-hero-modal select").val());
                 // Hide modal
                 jQuery("#correct-hero-modal").modal("hide");
-                // Save correction
-                self.screen.getHeroes().addCorrection(heroNameFailed, jQuery("#correct-hero-modal select").val());
                 // Update app
                 app.setModalActive(false);
                 app.render();

@@ -1,0 +1,92 @@
+{% extends "../frame.twig.html" %}
+{% block content %}
+    <div class="container">
+        <h1>Configuration</h1>
+
+        <div class="form-group row">
+            <label for="provider" class="col-sm-3 col-form-label">
+                Draft provider
+            </label>
+            <div class="col">
+                <select id="provider" class="form-control">
+                    <option value="heroescounters"{% if config.getOption("provider") == "heroescounters" %} selected{% endif %}>
+                        heroescounters.com
+                    </option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group row">
+            <label for="gameDisplay" class="col-sm-3 col-form-label">
+                Target display
+            </label>
+            <div class="col">
+                <select id="gameDisplay" class="form-control">
+                    {% for display in app.displays %}
+                        <option value="{{ display.id }}"{% if config.getOption("gameDisplay") == display.id %} selected{% endif %}>
+                            {{ display.name }} [{{ display.width }}x{{ display.height }}]
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-group row">
+            <label for="gameStorageDir" class="col-sm-3 col-form-label">
+                Hots storage directory
+            </label>
+            <div class="col">
+                <input type="text" class="form-control" id="gameStorageDir" value="{{ config.getOption("gameStorageDir") }}" >
+            </div>
+        </div>
+        <div class="form-group row">
+            <label for="gameImproveDetection" class="col-sm-3 col-form-label">
+                Improve detection
+            </label>
+            <div class="col">
+                <div class="form-check py-2">
+                    <input class="form-check-input" type="checkbox" id="gameImproveDetection"{% if config.getOption("gameImproveDetection") %} checked{% endif %} />
+                    <label class="form-check-label" for="gameImproveDetection">
+                        Submit images of player- and hero-names to improve the text recognition
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    jQuery(function() {
+
+        const fs = require("fs");
+
+        // Change game storage directory
+        jQuery("#provider").on("change", function() {
+            let value = jQuery(this).val();
+            app.getConfig().setOption("provider", value);
+        });
+        // Change game storage directory
+        jQuery("#gameDisplay").on("change", function() {
+            let value = jQuery(this).val();
+            app.getConfig().setOption("gameDisplay", value);
+        });
+        // Change game storage directory
+        jQuery("#gameStorageDir").on("change keyup", function() {
+            let value = jQuery(this).val();
+            if (fs.existsSync(value)) {
+                app.getConfig().setOption("gameStorageDir", (value !== "" ? value : null));
+                jQuery(this).addClass("is-valid").removeClass("is-invalid");
+            } else {
+                jQuery(this).addClass("is-invalid").removeClass("is-valid");
+            }
+        });
+        // Enable or disable submission of training data
+        jQuery("#gameImproveDetection").on("change", function() {
+            let value = jQuery(this).is(":checked");
+            app.getConfig().setOption("gameImproveDetection", value);
+        })
+        // Close config
+        jQuery("[data-action=\"close\"]").on("click", function() {
+            app.getConfig().hide();
+            app.render();
+        });
+
+    });
+    </script>
+{% endblock %}

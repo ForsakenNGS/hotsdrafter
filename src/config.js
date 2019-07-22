@@ -8,13 +8,16 @@ const HotsHelpers = require('./hots-helpers.js');
 const HotsReplay = require('hots-replay');
 
 // Templates
-const templateConfig = path.resolve(__dirname, "..", "gui", "config.twig.html");
+const templateConfig = path.resolve(__dirname, "..", "gui", "pages", "config.twig.html");
 
 class Config {
 
     constructor() {
         this.options = {
-            gameStorageDir: null
+            provider: "heroescounters",
+            gameDisplay: null,
+            gameStorageDir: null,
+            gameImproveDetection: true
         };
         this.visible = false;
         // Load heroes and exceptions from disk

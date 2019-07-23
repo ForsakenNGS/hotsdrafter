@@ -6,15 +6,4 @@
             <div class="progress-bar" role="progressbar" style="width: 0%"></div>
         </div>
     </div>
-    <script>
-    jQuery(function() {
-
-        if (app.provider.downloadPromise !== null) {
-            app.provider.downloadPromise.on("update", function() {
-                jQuery(".page").find(".progress-bar").css("width", Math.round(this.getCountDone() * 100 / this.getCount())+"%");
-            });
-        }
-
-    });
-    </script>
 {% endblock %}

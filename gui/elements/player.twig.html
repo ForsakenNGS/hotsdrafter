@@ -1,21 +1,21 @@
-<div class="card {% if player.isLocked() %}text-white bg-dark{% else %}text-dark bg-light{% endif %} mb-3"
-     data-content="player-hero"{% if player.isDetectionFailed() %} data-failed="{{ player.getCharacter }}"{% endif %}>
-    {% if player.isDetectionFailed() %}
+<div class="card {% if player.locked %}text-white bg-dark{% else %}text-dark bg-light{% endif %} mb-3"
+     data-content="player-hero"{% if player.detectionFailed %} data-failed="{{ player.heroName }}"{% endif %}>
+    {% if player.detectionFailed %}
         <div class="player-hero-none card-img-top">
             <span class="fa fa-exclamation-triangle"></span>
         </div>
     {% else %}
-        {% if player.getCharacter() %}
-            <img class="player-hero-image card-img-top" src="{{ draft.getHeroes().getImage( player.getCharacter() ) }}" alt="{{ player.getCharacter() }}">
+        {% if player.heroName %}
+            <img class="player-hero-image card-img-top" src="{{ gui.getHeroImage( player.heroName ) }}" alt="{{ player.heroName }}">
         {% else %}
             <div class="player-hero-none card-img-top">?</div>
         {% endif %}
     {% endif %}
     <div class="card-body p-1">
         <p class="card-text text-center">
-            <b>{% if player.getCharacter() %}{{ player.getCharacter() }}{% else %}---{% endif %}</b>
+            <b>{% if player.heroName %}{{ player.heroName }}{% else %}---{% endif %}</b>
             <br />
-            <small>{{ player.getName() }}</small>
+            <small>{{ player.playerName }}</small>
         </p>
     </div>
 </div>

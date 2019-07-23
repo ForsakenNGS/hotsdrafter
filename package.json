@@ -1,6 +1,6 @@
 {
   "name": "hotsdrafter",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Predict and support drafts for running hots matches",
   "main": "main.js",
   "scripts": {
@@ -92,6 +92,10 @@
         },
         {
           "name": "@electron-forge/maker-rpm",
+          "config": {}
+        },
+        {
+          "name": "@electron-forge/maker-zip",
           "config": {}
         },
         {

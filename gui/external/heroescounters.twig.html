@@ -1,4 +1,3 @@
-{% set suggestions = provider.getSuggestions() %}
 {% if suggestions.tips is not empty %}
     <div class="alert alert-info">
         <b>Tips:</b>
@@ -15,8 +14,8 @@
         {% include "heroescounters-sort.twig.html" with { team: "blue" } %}
         <div class="heroescounters-hero-list d-flex justify-content-start flex-wrap">
             {% for heroSuggestion in suggestions.friend %}
-                {% set hero = provider.getHeroById(heroSuggestion.id) %}
-                {% include "heroescounters-hero.twig.html" with { team: "blue" } %}
+                {% set hero = heroesById[heroSuggestion.id] %}
+                {% include "heroescounters-hero.twig.html" with { team: "blue", sortField: sortField["blue"] } %}
             {% endfor %}
         </div>
     </div>
@@ -25,8 +24,8 @@
         {% include "heroescounters-sort.twig.html" with { team: "red" } %}
         <div class="heroescounters-hero-list d-flex justify-content-end flex-wrap">
             {% for heroSuggestion in suggestions.enemy %}
-                {% set hero = provider.getHeroById(heroSuggestion.id) %}
-                {% include "heroescounters-hero.twig.html" with { team: "blue" } %}
+                {% set hero = heroesById[heroSuggestion.id] %}
+                {% include "heroescounters-hero.twig.html" with { team: "red", sortField: sortField["red"] } %}
             {% endfor %}
         </div>
     </div>

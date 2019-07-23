@@ -20,7 +20,7 @@ class Config {
             gameImproveDetection: true
         };
         this.visible = false;
-        // Load heroes and exceptions from disk
+        // Load gameData and exceptions from disk
         this.load();
         // Try to detect missing options
         this.detect();

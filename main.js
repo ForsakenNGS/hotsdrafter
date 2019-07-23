@@ -10,6 +10,8 @@ if (Installer.handleSquirrelEvent()) {
     return;
 }
 
+const HotsDraftApp = require("./src/hots-draft-app.js");
+
 function createWindow () {
     // Erstelle das Browser-Fenster.
     let win = new BrowserWindow({
@@ -28,6 +30,10 @@ function createWindow () {
 
     // and load the index.twig.html of the app.
     win.loadFile('gui/index.html');
+
+    // initialize core app class
+    let hotsApp = new HotsDraftApp(app, win);
+    hotsApp.debug(true);
 }
 
 app.on('ready', createWindow);

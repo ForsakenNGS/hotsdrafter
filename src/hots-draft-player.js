@@ -1,7 +1,7 @@
-// Local classes
-const EventHandler = require('./event-handler.js');
+// Nodejs dependencies
+const EventEmitter = require('events');
 
-class HotsDraftPlayer extends EventHandler {
+class HotsDraftPlayer extends EventEmitter {
 
     constructor(index, team) {
         super();
@@ -42,16 +42,16 @@ class HotsDraftPlayer extends EventHandler {
         if (this.name !== name) {
             let oldName = this.name;
             this.name = name;
-            this.trigger("name-updated", name, oldName);
-            this.trigger("change");
+            this.emit("name.updated", name, oldName);
+            this.emit("change");
         }
     }
     setTeam(team) {
         if (this.team !== team) {
             let oldTeam = this.team;
             this.team = team;
-            this.trigger("team-updated", team, oldTeam);
-            this.trigger("change");
+            this.emit("team.updated", team, oldTeam);
+            this.emit("change");
         }
     }
     setCharacter(character, detectionError) {
@@ -62,19 +62,19 @@ class HotsDraftPlayer extends EventHandler {
             let oldCharacter = this.character;
             this.character = character;
             this.detectionError = detectionError;
-            this.trigger("character-updated", character, oldCharacter);
-            this.trigger("change");
+            this.emit("character.updated", character, oldCharacter);
+            this.emit("change");
         }
     }
     setLocked(locked) {
         if (this.locked !== locked) {
             this.locked = locked;
             if (locked) {
-                this.trigger("locked");
+                this.emit("locked");
             } else {
-                this.trigger("unlocked");
+                this.emit("unlocked");
             }
-            this.trigger("change");
+            this.emit("change");
         }
     }
     setImagePlayerName(image) {

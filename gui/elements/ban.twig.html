@@ -1,9 +1,9 @@
 <div class="card {% if heroName != "???" %}text-dark bg-warning{% else %}text-dark bg-danger{% endif %} mx-1" data-index="{{ loop.index0 }}">
     {% if heroName is not null %}
         {% if heroName != "???" %}
-            <img class="card-img-top" src="{{ draft.getHeroes().getImage( heroName ) }}" alt="{{ heroName }}">
+            <img class="card-img-top" src="{{ gui.getHeroImage( heroName ) }}" alt="{{ heroName }}">
         {% else %}
-            <img class="card-img-top" src="{{ team.getBanImageData(index) }}" alt="{{ heroName }}" data-failed="BAN">
+            <img class="card-img-top" src="{{ heroImage }}" alt="{{ heroName }}" data-failed="BAN">
         {% endif %}
     {% else %}
         <div class="ban-hero-none card-img-top">?</div>

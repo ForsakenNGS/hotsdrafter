@@ -1,13 +1,15 @@
 // Nodejs dependencies
+const { ipcMain } = require('electron');
 const path = require('path');
 const request = require('request');
 const screenshot = require('screenshot-desktop');
 const Twig = require('twig');
 const HotsReplay = require('hots-replay');
+const EventEmitter = require('events');
 
 // Local classes
-const EventHandler = require('./event-handler.js');
 const HotsDraftScreen = require('../src/hots-draft-screen.js');
+const HotsGameData = require('./hots-game-data.js');
 const HotsHelpers = require('../src/hots-helpers.js');
 
 // Templates
@@ -18,41 +20,158 @@ const templates = {
     "update": path.resolve(__dirname, "..", "gui", "pages", "update.twig.html")
 };
 
-class HotsDraftApp extends EventHandler {
+class HotsDraftApp extends EventEmitter {
 
-    constructor(window) {
+    /**
+     * @param {App} app
+     * @param {BrowserWindow} window
+     */
+    constructor(app, window) {
         super();
+        this.app = app;
+        this.window = window;
         this.debugEnabled = false;
         this.debugStep = "Initializing...";
-        this.document = window.document;
-        this.window = window;
-        this.screen = new HotsDraftScreen();
-        this.screen.on("update-done", () => {
-            this.checkNextUpdate();
-        });
+        this.gameData = new HotsGameData("en-us");
+        this.screen = new HotsDraftScreen(this);
         this.provider = null;
         this.providerUpdated = false;
         this.displays = null;
         // Status fields
+        this.statusDownloadPending = false;
         this.statusGameActive = false;
         this.statusGameSaveFile = { file: null, mtime: 0, updated: 0 };
         this.statusGameLastReplay = { file: null, mtime: 0, updated: 0 };
-        this.statusGameData = null;
+        this.statusDraftData = null;
         this.statusUpdatePending = false;
         this.statusDraftActive = false;
         this.statusModalActive = false;
-        this.statusScreenshotPending = false;
-        // Bind ready event
-        this.on("ready", () => {
-            this.startDetection();
-        });
+        this.statusDetectionRunning = false;
         // Initialize
-        this.init();
+        this.registerEvents();
     }
     createProvider() {
         const ProviderName = HotsHelpers.getConfig().getOption("provider");
         const Provider = require('../src/external/'+ProviderName+'.js');
-        return new Provider(this.screen);
+        return new Provider(this);
+    }
+    registerEvents() {
+        ipcMain.on("gui", (event, type, ...parameters) => {
+            this.handleEvent(event, type, parameters);
+        });
+        // Bind ready event
+        this.on("ready", () => {
+            this.updatePage();
+            this.startDetection();
+        });
+        this.on("draft.started", () => {
+            this.sendDraftData();
+            this.updatePage();
+        });
+        this.on("draft.ended", () => {
+            this.updatePage();
+        })
+        // Detection events
+        this.screen.on("change", () => {
+            if (this.statusDraftActive) {
+                this.sendDraftData();
+            }
+        });
+        this.screen.on("detect.error", (error) => {
+            this.setDebugStep("Detection failed!")
+            this.checkNextUpdate();
+            if (this.debugEnabled) {
+                console.log("Analysing screenshot failed!");
+                console.log(error);
+            }
+        });
+        this.screen.on("detect.success", () => {
+            this.setDebugStep("Detection successful!")
+            this.checkNextUpdate();
+            if (this.debugEnabled) {
+                console.log("Analysing screenshot successful!");
+            }
+        });
+        this.screen.on("detect.done", () => {
+            this.statusDetectionRunning = false;
+        });
+        this.screen.on("detect.map.start", () => {
+            this.setDebugStep("Detecting map...")
+        });
+        this.screen.on("detect.timer.start", () => {
+            this.setDebugStep("Detecting active team...")
+        });
+        this.screen.on("detect.teams.start", () => {
+            this.setDebugStep("Detecting picks and bans...")
+        });
+        // Download events for game data
+        this.gameData.on("download.start", () => {
+            this.sendEvent("gui", "download.start");
+        });
+        this.gameData.on("download.progress", (percent) => {
+            this.sendEvent("gui", "download.progress", percent);
+        });
+        this.gameData.on("download.done", (success) => {
+            if (success) {
+                this.statusDownloadPending = false;
+                this.sendEvent("gui", "download.done");
+                this.sendGameData();
+                this.updateReadyState();
+            } else {
+                // Retry
+                this.gameData.update();
+            }
+        });
+    }
+    handleEvent(event, type, parameters) {
+        switch (type) {
+            case "ban.save":
+                this.screen.saveHeroBanImage(...parameters);
+                break;
+            case "config.option.set":
+                HotsHelpers.getConfig().setOption(...parameters);
+                break;
+            case "hero.correct":
+                this.gameData.addCorrection(...parameters);
+                break;
+            case "provider.action":
+                this.provider.handleGuiAction(parameters);
+                break;
+            case "provider.reload":
+                this.initProvider();
+                break;
+            case "update.forced":
+                this.updateForced();
+                break;
+            case "window.ready":
+                this.sendConfig();
+                this.init();
+                break;
+            case "quit":
+                this.quit();
+                break;
+        }
+    }
+    sendEvent(channel, type, ...parameters) {
+        this.window.webContents.send(channel, type, ...parameters);
+    }
+    sendConfig() {
+        this.sendEvent("gui", "config", HotsHelpers.getConfig().options);
+    }
+    sendDraftData() {
+        this.sendEvent("gui", "draft", this.collectDraftData());
+    }
+    sendGameData() {
+        this.sendEvent("gui", "gameData", {
+            heroes: this.gameData.heroes,
+            maps: this.gameData.maps,
+            substitutions: this.gameData.substitutions
+        });
+    }
+    init() {
+        this.initProvider();
+        this.downloadGameData();
+        this.detectDisplays();
     }
     initProvider() {
         // Init provider
@@ -60,28 +179,90 @@ class HotsDraftApp extends EventHandler {
         this.providerUpdated = false;
         this.provider.init();
         this.provider.on("change", () => {
-            this.update();
-        });
-        this.provider.on("update-started", () => {
-            this.render();
-        });
-        this.provider.on("update-done", () => {
-            this.providerUpdated = true;
-            this.trigger("provider-updated");
-            this.updateReadyState();
-            this.render();
-            // Debug output
-            if (this.debugEnabled) {
-                console.log("=== PROVIDER UPDATED ===");
+            if (this.statusDraftActive) {
+                this.sendDraftData();
             }
         });
-        this.provider.downloadHotsData();
     }
-    init() {
-        this.initProvider();
-        // Detect displays
-        this.detectDisplays();
+    detectDisplays() {
+        screenshot.listDisplays().then((displays) => {
+            this.displays = displays;
+            this.sendEvent("gui", "displays.detected", displays);
+            // Update config
+            let displayPrimary = null;
+            let displayConfig = HotsHelpers.getConfig().getOption("gameDisplay");
+            let displayConfigFound = false;
+            for (let i = 0; i < displays.length; i++) {
+                if (displays[i].id == displayConfig) {
+                    displayConfigFound = true;
+                    break;
+                }
+                if (displays[i].primary) {
+                    displayPrimary = displays[i].id;
+                }
+            }
+            if (!displayConfigFound) {
+                HotsHelpers.getConfig().setOption("gameDisplay", (displayPrimary !== null ? displayPrimary : null));
+            }
+            // Update status
+            this.emit("displays.detected");
+            this.updateReadyState();
+            // Debug output
+            if (this.debugEnabled) {
+                console.log("=== DISPLAYS DETECTED ===");
+            }
+        });
     }
+    downloadGameData() {
+        this.statusDownloadPending = true;
+        this.gameData.update();
+    }
+    setDebugStep(step) {
+        this.sendEvent("gui", "debug.step.update", step);
+    }
+    updateForced() {
+        this.screen.clear();
+        this.update();
+        this.sendDraftData();
+    }
+    updateReadyState() {
+        if (!this.ready) {
+            if (!this.statusDownloadPending && (this.displays !== null)) {
+                this.ready = true;
+                this.emit("ready");
+            }
+        }
+    }
+    updatePage() {
+        if (this.statusModalActive) {
+            // Do not re-updatePage while a correction modal is active
+            return;
+        }
+        // Render config template?
+        let config = HotsHelpers.getConfig();
+        if (config.isVisible()) {
+            this.sendEvent("gui", "page.set", "config");
+            return;
+        }
+        // App ready?
+        if (this.ready) {
+            if (this.statusDraftActive) {
+                // Render draft screen
+                this.sendEvent("gui", "page.set", "main");
+            } else {
+                // Show wait screen while not drafting
+                this.sendEvent("gui", "page.set", "wait");
+            }
+        } else {
+            // Show update screen
+            this.sendEvent("gui", "page.set", "update");
+        }
+    }
+    quit() {
+        this.app.quit();
+    }
+
+
     debug(debugEnabled) {
         this.debugEnabled = debugEnabled;
         this.screen.debug(debugEnabled);
@@ -114,40 +295,8 @@ class HotsDraftApp extends EventHandler {
     setModalActive(active) {
         this.statusModalActive = active;
     }
-    detectDisplays() {
-        screenshot.listDisplays().then((displays) => {
-            this.displays = displays;
-            // Update config
-            let displayPrimary = null;
-            let displayConfig = HotsHelpers.getConfig().getOption("gameDisplay");
-            let displayConfigFound = false;
-            for (let i = 0; i < displays.length; i++) {
-                if (displays[i].id == displayConfig) {
-                    displayConfigFound = true;
-                    break;
-                }
-                if (displays[i].primary) {
-                    displayPrimary = displays[i].id;
-                }
-            }
-            if (!displayConfigFound) {
-                HotsHelpers.getConfig().setOption("gameDisplay", (displayPrimary !== null ? displayPrimary : null));
-            }
-            // Update status
-            this.trigger("displays-detected");
-            this.updateReadyState();
-            // Debug output
-            if (this.debugEnabled) {
-                console.log("=== DISPLAYS DETECTED ===");
-            }
-        });
-    }
     startDetection() {
         this.update();
-    }
-    setDebugStep(step) {
-        this.debugStep = step;
-        jQuery(".debug-step").text(step);
     }
     queueUpdate() {
         if (!this.statusUpdatePending) {
@@ -158,12 +307,12 @@ class HotsDraftApp extends EventHandler {
         }
     }
     submitReplayData() {
-        if (this.statusGameData === null) {
+        if (this.statusDraftData === null) {
             return;
         }
-        let gameData = this.statusGameData;
+        let gameData = this.statusDraftData;
         // Clear draft state
-        this.statusGameData = null;
+        this.statusDraftData = null;
         // Replay found?
         if (this.statusGameLastReplay.file === null) {
             return;
@@ -213,7 +362,7 @@ class HotsDraftApp extends EventHandler {
     submitTrainingImage(type, text, image) {
         let url = "https://hotsdrafter.godlike.biz/training.php";
         let parameters = {
-            "type": type, "text": text, image: image.toString('base64')
+            "type": type, "text": text, image: image
         };
         request.post({ url: url, formData: parameters }, (err, httpResponse, body) => {
             // TODO: Error handling
@@ -228,7 +377,7 @@ class HotsDraftApp extends EventHandler {
             if (this.statusDraftActive) {
                 // Draft just ended
                 this.statusDraftActive = false;
-                this.trigger("draft-ended");
+                this.emit("draft.ended");
                 if (this.debugEnabled) {
                     console.log("=== DRAFT ENDED ===");
                 }
@@ -240,7 +389,7 @@ class HotsDraftApp extends EventHandler {
                 if (!this.statusDraftActive) {
                     // Draft just started
                     this.statusDraftActive = true;
-                    this.trigger("draft-started");
+                    this.emit("draft.started");
                     if (this.debugEnabled) {
                         console.log("=== DRAFT STARTED ===");
                     }
@@ -250,7 +399,7 @@ class HotsDraftApp extends EventHandler {
                 if (this.statusDraftActive) {
                     // Draft just ended
                     this.statusDraftActive = false;
-                    this.trigger("draft-ended");
+                    this.emit("draft.ended");
                     if (this.debugEnabled) {
                         console.log("=== DRAFT ENDED ===");
                     }
@@ -277,69 +426,71 @@ class HotsDraftApp extends EventHandler {
             this.statusGameActive = gameActive
             if (gameActive) {
                 // Game started
-                this.updateGameData();
+                this.updateDraftData();
                 this.screen.clear();
-                this.trigger("game-started");
+                this.emit("game.started");
                 if (this.debugEnabled) {
                     console.log("=== GAME STARTED ===");
                 }
             } else {
                 // Game ended
                 this.submitReplayData();
-                this.render();
-                this.trigger("game-ended");
+                this.emit("game.ended");
                 if (this.debugEnabled) {
                     console.log("=== GAME ENDED ===");
                 }
             }
+            this.updatePage();
         }
     }
-    updateGameData() {
-        this.setDebugStep("Checking game data...");
-        this.statusGameData = {
+    collectDraftData() {
+        let draftData = {
             map: this.screen.getMap(),
+            provider: {
+                template: this.provider.getTemplate(),
+                templateData: this.provider.getTemplateData()
+            },
+            bans: [],
             players: []
         };
-        let teamRed = this.screen.getTeam("red");
-        if (teamRed !== null) {
-            for (let i in teamRed.getPlayers()) {
-                let player = teamRed.getPlayer(i);
-                this.statusGameData.players.push({
-                    team: "red",
-                    playerName: player.getName(),
-                    playerNameImage: player.getImagePlayerName(),
-                    heroName: player.getCharacter(),
-                    heroNameImage: (player.isLocked() ? player.getImageHeroName() : null)
+        let teams = this.screen.getTeams();
+        for (let t = 0; t < teams.length; t++) {
+            let team = teams[t];
+            let bans = team.getBans();
+            for (let i in bans) {
+                let banImage = team.getBanImageData(i);
+                draftData.bans.push({
+                    index: i,
+                    team: team.getColor(),
+                    heroName: bans[i],
+                    heroImage: (banImage !== null ? banImage.toString('base64') : null)
                 });
             }
-        }
-        let teamBlue = this.screen.getTeam("blue");
-        if (teamBlue !== null) {
-            for (let i in teamBlue.getPlayers()) {
-                let player = teamBlue.getPlayer(i);
-                this.statusGameData.players.push({
-                    team: "blue",
+            for (let i in team.getPlayers()) {
+                let player = team.getPlayer(i);
+                draftData.players.push({
+                    index: i,
+                    team: team.getColor(),
                     playerName: player.getName(),
-                    playerNameImage: player.getImagePlayerName(),
+                    playerNameImage: player.getImagePlayerName().toString('base64'),
                     heroName: player.getCharacter(),
-                    heroNameImage: (player.isLocked() ? player.getImageHeroName() : null)
+                    heroNameImage: (player.isLocked() ? player.getImageHeroName().toString('base64') : null),
+                    detectionFailed: player.isDetectionFailed(),
+                    locked: player.isLocked()
                 });
             }
-        }
+        };
+        return draftData;
     }
-    updateReadyState() {
-        if (!this.ready) {
-            if (this.providerUpdated && (this.displays !== null)) {
-                this.ready = true;
-                this.trigger("ready");
-            }
-        }
+    updateDraftData() {
+        this.setDebugStep("Checking draft data...");
+        this.statusDraftData = this.collectDraftData();
     }
     updateScreenshot() {
-        if (this.statusScreenshotPending || this.screen.updateActive) {
+        if (this.statusDetectionRunning || this.screen.updateActive) {
             return;
         }
-        this.statusScreenshotPending = true;
+        this.statusDetectionRunning = true;
         let screenshotOptions = { format: 'png' };
         if (this.displays.length > 0) {
             screenshotOptions.screen = this.displays[0].id;
@@ -347,10 +498,13 @@ class HotsDraftApp extends EventHandler {
         this.setDebugStep("Capturing screenshot...");
         screenshot(screenshotOptions).then((image) => {
             if (this.statusGameActive) {
-                this.statusScreenshotPending = false;
+                this.statusDetectionRunning = false;
                 return;
             }
             this.setDebugStep("Analysing screenshot...");
+            if (this.debugEnabled) {
+                console.log("Analysing screenshot...");
+            }
             this.screen.detect(image).catch((error) => {
                 if (this.debugEnabled) {
                     if (this.screen.getMap() === null) {
@@ -360,11 +514,9 @@ class HotsDraftApp extends EventHandler {
                         console.error(error.stack);
                     }
                 }
-            }).finally(() => {
-                this.statusScreenshotPending = false;
             });
         }).catch((error) => {
-            this.statusScreenshotPending = false;
+            this.statusDetectionRunning = false;
             if (this.debugEnabled) {
                 console.error(error);
                 console.error(error.stack);
@@ -380,46 +532,6 @@ class HotsDraftApp extends EventHandler {
             });
         });
         */
-    }
-    render() {
-        if (this.statusModalActive) {
-            // Do not re-render while a correction modal is active
-            return;
-        }
-        // Render config template?
-        let config = HotsHelpers.getConfig();
-        if (config.isVisible()) {
-            this.renderPage("config");
-            return;
-        }
-        // App ready?
-        if (this.ready) {
-            if (this.statusDraftActive) {
-                // Render draft screen
-                this.renderPage("main");
-            } else {
-                // Show wait screen while not drafting
-                this.renderPage("wait");
-            }
-        } else {
-            // Show update screen
-            this.renderPage("update");
-        }
-    }
-    renderPage(ident) {
-        Twig.renderFile(templates[ident], {
-            app: this,
-            draft: this.screen,
-            provider: this.provider,
-            config: HotsHelpers.getConfig(),
-            pageActive: ident
-        }, (error, html) => {
-            if (error) {
-                console.error(error);
-            } else {
-                jQuery(".page").html(html);
-            }
-        });
     }
 }
 

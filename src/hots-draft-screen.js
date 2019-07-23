@@ -1,25 +1,24 @@
-// Librarys
+// Nodejs dependencies
 const { TesseractWorker, TesseractUtils, ...TesseractTypes } = require('tesseract.js');
 const worker = new TesseractWorker();
 const jimp = require('jimp');
 const path = require('path');
 const fs = require('fs');
+const EventEmitter = require('events');
 
 // Local classes
-const EventHandler = require('./event-handler.js');
-const PromiseGroup = require('./promise-group.js');
 const HotsDraftTeam = require('./hots-draft-team.js');
 const HotsDraftPlayer = require('./hots-draft-player.js');
-const HotsHeroes = require('./hots-heroes.js');
 const HotsHelpers = require('./hots-helpers.js');
 
 // Data files
 const DraftLayout = require('../data/draft-layout');
 
-class HotsDraftScreen extends EventHandler {
+class HotsDraftScreen extends EventEmitter {
 
-    constructor() {
+    constructor(app) {
         super();
+        this.app = app;
         this.updateActive = false;
         this.tessLangs = "eng";
         this.tessParams = {
@@ -33,15 +32,14 @@ class HotsDraftScreen extends EventHandler {
         this.map = null;
         this.teams = [];
         this.teamActive = null;
-        this.heroes = new HotsHeroes("en-us");
         // Update handling
-        this.on("update-started", () => {
+        this.on("update.started", () => {
             this.updateActive = true;
         });
-        this.on("update-done", () => {
+        this.on("update.done", () => {
             this.updateActive = false;
         });
-        this.on("update-failed", () => {
+        this.on("update.failed", () => {
             // Nothing yet
         });
     }
@@ -95,14 +93,12 @@ class HotsDraftScreen extends EventHandler {
             }
             const directoryPathBase = path.join(__dirname, "..", "data", "bans");
             const directoryPathUser = banHeroDir;
-            this.loadBanImagesFromDir(directoryPathBase).catch((error) => {
-                reject(error);
+            this.loadBanImagesFromDir(directoryPathBase).then(() => {
+                return this.loadBanImagesFromDir(directoryPathUser);
             }).then(() => {
-                this.loadBanImagesFromDir(directoryPathUser).catch((error) => {
-                    reject(error);
-                }).then(() => {
-                    resolve(true);
-                });
+                resolve(true);
+            }).catch((error) => {
+                reject(error);
             });
         });
     }
@@ -113,27 +109,28 @@ class HotsDraftScreen extends EventHandler {
                     reject(new Error('Unable to scan directory: ' + errorMessage));
                     return;
                 }
-                let loadPromiseGroup = new PromiseGroup();
+                let loadPromises = [];
                 files.forEach((file) => {
                     let match = file.match(/^(.+)\.png$/);
                     if (match) {
                         // Load image
                         let heroName = match[1];
-                        loadPromiseGroup.add(
+                        loadPromises.push(
                             jimp.read(directoryPath+"/"+file).then(async (image) => {
                                 this.banImages[heroName] = image;
-                            }).catch((error) => {
-                                console.error("Error loading image '"+directoryPath+"/"+file+"'");
-                                console.error(error);
-                                console.error(error.stack);
-                                reject(error);
                             })
                         );
                     }
                 });
-                loadPromiseGroup.then(() => {
+                if (loadPromises.length === 0) {
                     resolve(true);
-                });
+                } else {
+                    Promise.all(loadPromises).then(() => {
+                        resolve(true);
+                    }).catch((error) => {
+                        reject(error);
+                    });
+                }
             });
         });
     }
@@ -154,7 +151,7 @@ class HotsDraftScreen extends EventHandler {
         this.screenshot = null;
         this.map = null;
         this.teams = [];
-        this.trigger("change");
+        this.emit("change");
     }
     detect(screenshotFile) {
         // Start detection
@@ -163,68 +160,50 @@ class HotsDraftScreen extends EventHandler {
                 resolve(false);
                 return;
             }
-            try {
-                jimp.read(screenshotFile).then((image) => {
-                    this.trigger("update-started");
-                    this.screenshot = image;
-                    this.loadOffsets();
-                    this.loadBanImages().then(() => {
-                        return this.detectMap().then(() => {
-                            return this.detectTimer().then(() => {
-                                let detectPromiseGroup = new PromiseGroup();
-                                // Teams
-                                if (this.teams.length === 0) {
-                                    // Teams not yet detected
-                                    detectPromiseGroup.add(
-                                        this.detectTeams().catch((error) => {
-                                            reject(new Error("Teams not detected!"));
-                                            console.error(error);
-                                            console.error(error.stack);
-                                        })
-                                    );
-                                } else {
-                                    // Update teams
-                                    detectPromiseGroup.add(
-                                        this.updateTeams().catch((error) => {
-                                            reject(new Error("Failed to update teams!"));
-                                            console.error(error);
-                                            console.error(error.stack);
-                                        })
-                                    );
-                                }
-                                // Can finish now
-                                let success = true;
-                                detectPromiseGroup.catch((error) => {
-                                    success = true;
-                                }).finally(() => {
-                                    this.trigger("update-done", success);
-                                    resolve(success);
-                                });
-                            }).catch((error) => {
-                                this.trigger("update-done", false);
-                                this.trigger("update-failed", error);
-                                reject(error);
-                            });
-                        }).catch((error) => {
-                            this.trigger("update-done", false);
-                            this.trigger("update-failed", error);
-                            reject(error);
-                        });
-                    }).catch((error) => {
-                        this.trigger("update-done", false);
-                        this.trigger("update-failed", error);
-                        reject(error);
-                    });
-                }).catch((error) => {
-                    this.trigger("update-done", false);
-                    this.trigger("update-failed", error);
-                    reject(error);
-                });
-            } catch (e) {
-                this.trigger("update-done", false);
-                this.trigger("update-failed", error);
+            this.emit("detect.start");
+            jimp.read(screenshotFile).then((image) => {
+                // Screenshot file loaded
+                this.screenshot = image;
+                this.emit("detect.screenshot.load.success");
+                // Load offsets
+                this.loadOffsets();
+                // Load images for detecting banned heroes (if not already loaded)
+                return this.loadBanImages();
+            }).then(() => {
+                this.emit("detect.ban.images.load.success");
+                // Detect map text (will invoke "detectTimer" on success)
+                this.emit("detect.map.start");
+                return this.detectMap();
+            }).then(() => {
+                // Success
+                this.emit("detect.map.success");
+                this.emit("change");
+                this.emit("detect.timer.start");
+                return this.detectTimer();
+            }).then(() => {
+                // Success
+                this.emit("detect.timer.success");
+                this.emit("change");
+                // Teams
+                this.emit("detect.teams.start");
+                if (this.teams.length === 0) {
+                    // Teams not yet detected
+                    return this.detectTeams();
+                } else {
+                    // Update teams
+                    return this.updateTeams();
+                }
+            }).then((result) => {
+                this.emit("detect.teams.success");
+                this.emit("detect.success");
+                this.emit("detect.done");
+                resolve(result);
+            }).catch((error) => {
+                // Error in the detection chain
+                this.emit("detect.error", error);
+                this.emit("detect.done");
                 reject(error);
-            }
+            });
         });
     }
     detectMap() {
@@ -249,8 +228,6 @@ class HotsDraftScreen extends EventHandler {
                     let mapName = result.text.trim();
                     if (mapName !== "") {
                         this.setMap(mapName);
-                        this.trigger("map-detected", mapName);
-                        this.trigger("change");
                         resolve(true);
                     } else {
                         reject(new Error("Map name could not be detected!"));
@@ -309,58 +286,63 @@ class HotsDraftScreen extends EventHandler {
     }
     detectTeams() {
         return new Promise(async (resolve, reject) => {
-            let detectPromiseGroup = new PromiseGroup();
-            detectPromiseGroup.add(
-                this.detectTeam("blue").catch((error) => {
-                    console.error(error);
-                    console.log(error.stack);
-                    reject(error);
-                })
-            );
-            detectPromiseGroup.add(
-                this.detectTeam("red").catch((error) => {
-                    console.error(error);
-                    console.log(error.stack);
-                    reject(error);
-                })
-            );
-            detectPromiseGroup.then(() => {
+            let teamDetections = [
+                this.detectTeam("blue"),
+                this.detectTeam("red")
+            ];
+            Promise.all(teamDetections).then(() => {
                 resolve(true);
+            }).catch((error) => {
+                reject(error);
             });
+        });
+    }
+    updateTeams() {
+        return new Promise(async (resolve, reject) => {
+            for (let t = 0; t < this.teams.length; t++) {
+                let team = this.teams[t];
+                let players = team.getPlayers();
+                let detections = [];
+                // Bans
+                detections.push( this.detectBans(team) );
+                // Players
+                for (let i = 0; i < players.length; i++) {
+                    let player = players[i];
+                    if (!player.isLocked()) {
+                        detections.push( this.detectPlayer(player) );
+                    }
+                }
+                Promise.all(detections).then(() => {
+                    resolve(true);
+                });
+            }
         });
     }
     detectTeam(color) {
         return new Promise(async (resolve, reject) => {
             let team = new HotsDraftTeam(color);
             let playerPos = this.offsets["teams"][color]["players"];
-            let detectPromiseGroup = new PromiseGroup();
+            let detections = [];
             this.addTeam(team);
             // Bans
-            detectPromiseGroup.add(
-                this.detectBans(team).catch((error) => {
-                    console.error(error);
-                    console.error(error.stack);
-                    reject(new Error("Bans not detected!"));
-                })
-            );
+            detections.push( this.detectBans(team) );
             // Players
             for (let i = 0; i < playerPos.length; i++) {
                 let player = new HotsDraftPlayer(i, team);
-                detectPromiseGroup.add(
-                    this.detectPlayer(player).then(() => {
-                        team.addPlayer(player);
-                        this.trigger("player-detected", player);
-                        this.trigger("change");
-                    }).catch((error) => {
-                        console.error(error);
-                        console.log(error.stack);
-                        reject(error);
-                    })
-                );
+                detections.push( this.detectPlayer(player) );
             }
-            detectPromiseGroup.then(() => {
+            Promise.all(detections).then((result) => {
+                let banResult = result.shift();
+                for (let i = 0; i < result.length; i++) {
+                    team.addPlayer(result[i]);
+                }
                 resolve(true);
             });
+        }).then((result) => {
+            // Success
+            this.emit("detect.team.success", color);
+            this.emit("change");
+            return result;
         });
     }
     detectBans(team) {
@@ -401,6 +383,11 @@ class HotsDraftScreen extends EventHandler {
                 }
             }
             resolve(true);
+        }).then((result) => {
+            // Success
+            this.emit("detect.bans.success", team);
+            this.emit("change");
+            return result;
         });
     }
     detectPlayer(player) {
@@ -418,155 +405,114 @@ class HotsDraftScreen extends EventHandler {
             let sizeName = this.offsets["nameSize"];
             let sizeHeroNameRot = this.offsets["nameHeroSizeRotated"];
             let sizePlayerNameRot = this.offsets["namePlayerSizeRotated"];
-            try {
-                let detectPromiseGroup = new PromiseGroup();
-                let playerImg = this.screenshot.clone().crop(posPlayer.x, posPlayer.y, sizePlayer.x, sizePlayer.y);
-                if (this.generateDebugFiles) {
-                    // Debug output
-                    playerImg.write("debug/" + team.color + "_player" + index + "_Test.png");
-                }
-                let playerImgNameRaw = playerImg.clone().crop(posName.x, posName.y, sizeName.x, sizeName.y).scale(4, jimp.RESIZE_BILINEAR).rotate(posName.angle, jimp.RESIZE_BEZIER);
-                if (this.generateDebugFiles) {
-                    // Debug output
-                    playerImgNameRaw.write("debug/" + team.color + "_player" + index + "_NameTest.png");
-                }
-                if (!player.isLocked()) {
-                    // Cleanup and trim hero name
-                    let heroImgName = playerImgNameRaw.clone().crop(posHeroNameRot.x, posHeroNameRot.y, sizeHeroNameRot.x, sizeHeroNameRot.y);
-                    let heroVisible = false;
-                    let heroLocked = false;
-                    if (HotsHelpers.imageBackgroundMatch(heroImgName, DraftLayout["colors"]["heroBackgroundLocked"][colorIdent])) {
-                        // Hero locked!
-                        if (HotsHelpers.imageCleanupName(heroImgName, DraftLayout["colors"]["heroNameLocked"][colorIdent], [], 0x000000FF, 0xFFFFFFFF)) {
-                            heroImgName.greyscale().contrast(0.4).normalize().blur(1).scale(0.5, jimp.RESIZE_BILINEAR);
-                            heroVisible = true;
-                            heroLocked = true;
-                        }
-                    } else {
-                        player.setLocked(false);
-                        if (team.getColor() === "blue") {
-                            // Hero not locked!
-                            let heroImgNameOrg = heroImgName.clone();
-                            if ((colorIdent == "blue-active") && HotsHelpers.imageCleanupName(heroImgName, DraftLayout["colors"]["heroNamePrepick"][colorIdent+"-picking"])) {
-                                heroImgName.greyscale().normalize().blur(1).scale(0.5, jimp.RESIZE_BILINEAR).invert();
-                                heroVisible = true;
-                            } else if (HotsHelpers.imageCleanupName(heroImgNameOrg, DraftLayout["colors"]["heroNamePrepick"][colorIdent])) {
-                                heroImgName = heroImgNameOrg;
-                                heroImgName.greyscale().normalize().blur(1).scale(0.5, jimp.RESIZE_BILINEAR).invert();
-                                heroVisible = true;
-                            }
-                        }
-                    }
-                    if (this.generateDebugFiles) {
-                        // Debug output
-                        heroImgName.write("debug/" + team.color + "_player" + index + "_HeroNameTest.png");
-                    }
-                    if (heroVisible) {
-                        // Detect hero name using tesseract
-                        detectPromiseGroup.add(
-                            heroImgName.getBufferAsync(jimp.MIME_PNG).then((buffer) => {
-                                worker.recognize(buffer, this.tessLangs, this.tessParams).then((result) => {
-                                    let heroName = this.heroes.correct(result.text.trim());
-                                    if (heroName !== "PICKING") {
-                                        let detectionError = !this.heroes.exists(heroName);
-                                        player.setCharacter(heroName, detectionError);
-                                        player.setImageHeroName(buffer);
-                                        player.setLocked(heroLocked);
-                                    }
-                                }).catch((error) => {
-                                    reject(error);
-                                });
-                            })
-                        );
-                    }
-                }
-                if (player.getName() === null) {
-                    // Cleanup and trim player name
-                    let playerImgName = playerImgNameRaw.clone().crop(posPlayerNameRot.x, posPlayerNameRot.y, sizePlayerNameRot.x, sizePlayerNameRot.y);
-                    if (!HotsHelpers.imageCleanupName(
-                        playerImgName, DraftLayout["colors"]["playerName"][colorIdent], DraftLayout["colors"]["boost"]
-                    )) {
-                        reject(new Error("Player name not found!"));
-                    }
-                    playerImgName.greyscale().contrast(0.4).normalize().blur(1).scale(0.5, jimp.RESIZE_BILINEAR).invert();
-                    if (this.generateDebugFiles) {
-                        // Debug output
-                        playerImgName.write("debug/" + team.color + "_player" + index + "_PlayerNameTest.png");
-                    }
-                    // Detect player name using tesseract
-                    detectPromiseGroup.add(
-                        playerImgName.getBufferAsync(jimp.MIME_PNG).then((buffer) => {
-                            worker.recognize(buffer, this.tessLangs, this.tessParams).then((result) => {
-                                let playerName = result.text.trim();
-                                console.log(playerName);
-                                player.setName(playerName);
-                                player.setImagePlayerName(buffer);
-                            }).catch((error) => {
-                                reject(error);
-                            });
-                        })
-                    );
-                }
-                if (detectPromiseGroup.getCount() == 0) {
-                    resolve(player);
-                } else {
-                    detectPromiseGroup.then(() => {
-                        resolve(player);
-                    });
-                }
-            } catch (error) {
-                reject(error);
+            let detections = [];
+            let playerImg = this.screenshot.clone().crop(posPlayer.x, posPlayer.y, sizePlayer.x, sizePlayer.y);
+            if (this.generateDebugFiles) {
+                // Debug output
+                playerImg.write("debug/" + team.color + "_player" + index + "_Test.png");
             }
-        });
-    }
-    updateTeams() {
-        return new Promise(async (resolve, reject) => {
-            for (let t = 0; t < this.teams.length; t++) {
-                let team = this.teams[t];
-                let players = team.getPlayers();
-                let detectPromiseGroup = new PromiseGroup();
-                // Bans
-                detectPromiseGroup.add(
-                    this.detectBans(team).catch((error) => {
-                        reject(new Error("Bans not detected!"));
-                        console.error(error);
-                        console.error(error.stack);
+            let playerImgNameRaw = playerImg.clone().crop(posName.x, posName.y, sizeName.x, sizeName.y).scale(4, jimp.RESIZE_BILINEAR).rotate(posName.angle, jimp.RESIZE_BEZIER);
+            if (this.generateDebugFiles) {
+                // Debug output
+                playerImgNameRaw.write("debug/" + team.color + "_player" + index + "_NameTest.png");
+            }
+            if (!player.isLocked()) {
+                // Cleanup and trim hero name
+                let heroImgName = playerImgNameRaw.clone().crop(posHeroNameRot.x, posHeroNameRot.y, sizeHeroNameRot.x, sizeHeroNameRot.y);
+                let heroVisible = false;
+                let heroLocked = false;
+                if (HotsHelpers.imageBackgroundMatch(heroImgName, DraftLayout["colors"]["heroBackgroundLocked"][colorIdent])) {
+                    // Hero locked!
+                    if (HotsHelpers.imageCleanupName(heroImgName, DraftLayout["colors"]["heroNameLocked"][colorIdent], [], 0x000000FF, 0xFFFFFFFF)) {
+                        heroImgName.greyscale().contrast(0.4).normalize().blur(1).scale(0.5, jimp.RESIZE_BILINEAR);
+                        heroVisible = true;
+                        heroLocked = true;
+                    }
+                } else {
+                    player.setLocked(false);
+                    if (team.getColor() === "blue") {
+                        // Hero not locked!
+                        let heroImgNameOrg = heroImgName.clone();
+                        if ((colorIdent == "blue-active") && HotsHelpers.imageCleanupName(heroImgName, DraftLayout["colors"]["heroNamePrepick"][colorIdent+"-picking"])) {
+                            heroImgName.greyscale().normalize().blur(1).scale(0.5, jimp.RESIZE_BILINEAR).invert();
+                            heroVisible = true;
+                        } else if (HotsHelpers.imageCleanupName(heroImgNameOrg, DraftLayout["colors"]["heroNamePrepick"][colorIdent])) {
+                            heroImgName = heroImgNameOrg;
+                            heroImgName.greyscale().normalize().blur(1).scale(0.5, jimp.RESIZE_BILINEAR).invert();
+                            heroVisible = true;
+                        }
+                    }
+                }
+                if (this.generateDebugFiles) {
+                    // Debug output
+                    heroImgName.write("debug/" + team.color + "_player" + index + "_HeroNameTest.png");
+                }
+                if (heroVisible) {
+                    // Detect hero name using tesseract
+                    let imageHeroName = null;
+                    detections.push(
+                        heroImgName.getBufferAsync(jimp.MIME_PNG).then((buffer) => {
+                            imageHeroName = buffer;
+                            return worker.recognize(buffer, this.tessLangs, this.tessParams);
+                        }).then((result) => {
+                            let heroName = this.app.gameData.correct(result.text.trim());
+                            if (heroName !== "PICKING") {
+                                let detectionError = !this.app.gameData.exists(heroName);
+                                player.setCharacter(heroName, detectionError);
+                                player.setImageHeroName(imageHeroName);
+                                player.setLocked(heroLocked);
+                            }
+                            return heroName;
+                        })
+                    )
+                }
+            }
+            if (player.getName() === null) {
+                // Cleanup and trim player name
+                let playerImgName = playerImgNameRaw.clone().crop(posPlayerNameRot.x, posPlayerNameRot.y, sizePlayerNameRot.x, sizePlayerNameRot.y);
+                if (!HotsHelpers.imageCleanupName(
+                    playerImgName, DraftLayout["colors"]["playerName"][colorIdent], DraftLayout["colors"]["boost"]
+                )) {
+                    reject(new Error("Player name not found!"));
+                }
+                playerImgName.greyscale().contrast(0.4).normalize().blur(1).scale(0.5, jimp.RESIZE_BILINEAR).invert();
+                if (this.generateDebugFiles) {
+                    // Debug output
+                    playerImgName.write("debug/" + team.color + "_player" + index + "_PlayerNameTest.png");
+                }
+                // Detect player name using tesseract
+                let imagePlayerName = null;
+                detections.push(
+                    playerImgName.getBufferAsync(jimp.MIME_PNG).then((buffer) => {
+                        imagePlayerName = buffer;
+                        return worker.recognize(buffer, this.tessLangs, this.tessParams);
+                    }).then((result) => {
+                        let playerName = result.text.trim();
+                        console.log(playerName);
+                        player.setName(playerName);
+                        player.setImagePlayerName(imagePlayerName);
+                        return playerName;
                     })
                 );
-                // Players
-                for (let i = 0; i < players.length; i++) {
-                    let player = players[i];
-                    if (!player.isLocked()) {
-                        detectPromiseGroup.add(
-                            this.detectPlayer(player).catch((error) => {
-                                console.error(error);
-                                console.log(error.stack);
-                                reject(error);
-                            })
-                        );
-                    }
-                }
-                detectPromiseGroup.then(() => {
-                    resolve(true);
-                });
+            }
+            if (detections.length == 0) {
+                resolve(player);
+            } else {
+                Promise.all(detections).then(() => {
+                    resolve(player);
+                }).catch((error) => {
+                  reject(error);
+              });
             }
         });
     }
     addTeam(team) {
         this.teams.push(team);
         team.on("change", () => {
-            this.trigger("team-updated", this);
-            this.trigger("change");
+            this.emit("team.updated", this);
+            this.emit("change");
         });
     }
-
-    /**
-     * @returns {HotsHeroes}
-     */
-    getHeroes() {
-        return this.heroes;
-    }
-
     /**
      * @returns {string|null}
      */
@@ -583,6 +529,9 @@ class HotsDraftScreen extends EventHandler {
     }
     getTeamActive() {
         return this.teamActive;
+    }
+    getTeams() {
+        return this.teams;
     }
     setMap(mapName) {
         console.log(mapName);

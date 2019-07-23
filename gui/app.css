@@ -40,6 +40,7 @@
 .ban-hero-none {
     display: inline-block;
     min-height: 58px;
+    min-width: 110px;
     font-size: 28px;
     text-align: center;
     background: #000000;

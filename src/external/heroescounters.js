@@ -7,8 +7,8 @@ const HotsDraftSuggestions = require('../hots-draft-suggestions.js');
 
 class HeroesCountersProvider extends HotsDraftSuggestions {
 
-    constructor(draftScreen) {
-        super(draftScreen);
+    constructor(app) {
+        super(app);
         this.heroesByName = {};
         this.heroesById = {};
         this.maps = {};
@@ -36,7 +36,7 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
         }
         this.heroesByName[name.toUpperCase()] = hero;
         this.heroesById[id] = hero;
-        //this.screen.getHeroes().add(name);
+        //this.screen.getGameData().add(name);
     }
     loadCoreData(response) {
         let self = this;
@@ -77,7 +77,8 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
         }
         this.sortSuggestions("blue");
         this.sortSuggestions("red");
-        this.trigger("update-done");
+        this.emit("update.done");
+        this.emit("change");
         if (this.updatePending) {
             this.update();
         }
@@ -99,16 +100,31 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
     getTemplate() {
         return "external/heroescounters.twig.html";
     }
+    getTemplateData() {
+        return {
+            suggestions: this.getSuggestions(),
+            sortField: this.sortField,
+            heroesById: this.heroesById,
+            heroesByName: this.heroesByName
+        };
+    }
     getSuggestions() {
         return this.suggestions;
     }
     getSortField(team) {
         return this.sortField[team];
     }
+    handleGuiAction(parameters) {
+        switch (parameters.shift()) {
+            case "sortBy":
+                this.sortBy(...parameters);
+                break;
+        }
+    }
     sortBy(team, field) {
         this.sortField[team] = field;
         this.sortSuggestions(team);
-        this.trigger("change");
+        this.emit("change");
     }
     sortSuggestions(team) {
         let suggestionField = null;
@@ -165,10 +181,24 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
         if (this.maps.hasOwnProperty(this.screen.getMap())) {
             this.activeMap = this.maps[this.screen.getMap()].id;
         }
+        // Bans
+        this.bans = [];
         // Player team
         this.picksBlue = [];
         let teamBlue = this.screen.getTeam("blue");
         if (teamBlue !== null) {
+            let bansBlue = teamBlue.getBans();
+            for (let i = 0; i < bansBlue.length; i++) {
+                if (bansBlue[i] === null) {
+                    continue;
+                }
+                let hero = this.getHeroByName( bansBlue[i] );
+                if (hero !== null) {
+                    this.bans.push(hero.id);
+                } else {
+                    console.error("Hero not found: "+bansBlue[i].getCharacter());
+                }
+            }
             let playersBlue = teamBlue.getPlayers();
             for (let i = 0; i < playersBlue.length; i++) {
                 if (!playersBlue[i].isLocked()) {
@@ -186,6 +216,18 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
         this.picksRed = [];
         let teamRed = this.screen.getTeam("red");
         if (teamRed !== null) {
+            let bansRed = teamRed.getBans();
+            for (let i = 0; i < bansRed.length; i++) {
+                if (bansRed[i] === null) {
+                    continue;
+                }
+                let hero = this.getHeroByName( bansRed[i] );
+                if (hero !== null) {
+                    this.bans.push(hero.id);
+                } else {
+                    console.error("Hero not found: "+bansRed[i]);
+                }
+            }
             let playersRed = teamRed.getPlayers();
             for (let i = 0; i < playersRed.length; i++) {
                 if (!playersRed[i].isLocked()) {
@@ -195,12 +237,10 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
                 if (hero !== null) {
                     this.picksRed.push(hero.id);
                 } else {
-                    console.error("Hero not found: "+playersRed[i].getCharacter());
+                    console.error("Hero not found: "+playersRed[i]);
                 }
             }
         }
-        // Bans
-        // TODO
         // Send request
         let url = "https://www.heroescounters.com/teampicker/calculate"+
             "?playerteam="+this.picksBlue.join(",")+

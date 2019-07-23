@@ -1,7 +1,7 @@
-// Local classes
-const EventHandler = require('./event-handler.js');
+// Nodejs dependencies
+const EventEmitter = require('events');
 
-class HotsDraftTeam extends EventHandler {
+class HotsDraftTeam extends EventEmitter {
 
     constructor(color) {
         super();
@@ -20,8 +20,8 @@ class HotsDraftTeam extends EventHandler {
         this.players.push(player);
         let self = this;
         player.on("change", function() {
-            self.trigger("player-updated", this);
-            self.trigger("change");
+            self.emit("player.updated", this);
+            self.emit("change");
         });
     }
     getColor() {

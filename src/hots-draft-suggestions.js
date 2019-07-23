@@ -1,38 +1,20 @@
-// Local classes
-const EventHandler = require('./event-handler.js');
+// Nodejs dependencies
+const EventEmitter = require('events');
 
-class HotsDraftSuggestions extends EventHandler {
+class HotsDraftSuggestions extends EventEmitter {
 
-    constructor(draftScreen) {
+    /**
+     * @param {HotsDraftApp} app
+     */
+    constructor(app) {
         super();
-        this.downloadPromise = null;
-        this.screen = draftScreen;
+        this.app = app;
+        this.screen = app.screen;
         // Update suggestions when the draft changes
         let self = this;
         this.screen.on("change", function() {
             self.update(this);
-            self.trigger("change");
-        });
-        this.screen.on("update-failed", function() {
-            self.trigger("error");
-        });
-    }
-    downloadHotsData() {
-        this.screen.getHeroes().update().on("start", (downloaderPromise) => {
-            let failed = false;
-            this.downloadPromise = downloaderPromise;
-            this.trigger("update-started");
-            this.downloadPromise.then(() => {
-                this.downloadPromise = null;
-                this.trigger("update-done");
-            }).catch((error) => {
-                failed = true;
-            }).finally(() => {
-                if (failed) {
-                    // Retry
-                    this.downloadHotsData();
-                }
-            });
+            self.emit("change");
         });
     }
     init() {
@@ -41,8 +23,14 @@ class HotsDraftSuggestions extends EventHandler {
     update() {
         throw new Error('Function "update" not implemented for current suggestion provider!');
     }
+    handleGuiAction(parameters) {
+        throw new Error('Function "handleGuiAction" not implemented for current suggestion provider!');
+    }
     getTemplate() {
         throw new Error('Function "getTemplate" not implemented for current suggestion provider!');
+    }
+    getTemplateData() {
+        throw new Error('Function "getTemplateData" not implemented for current suggestion provider!');
     }
 }
 

@@ -9,7 +9,7 @@
             </div>
             <div class="modal-body">
                 <select id="correct-hero-name" class="form-control">
-                {% for heroName in draft.getHeroes().getNames() %}
+                {% for heroName in gui.gameData.heroes.name %}
                     <option value="{{ heroName }}">{{ heroName }}</option>
                 {% endfor %}
                 </select>
@@ -32,34 +32,31 @@ jQuery(function() {
             jQuery("#correct-hero-modal .btn-primary").off("click").on("click", function (e) {
                 e.preventDefault();
                 // Save correction
-                app.screen.saveHeroBanImage(jQuery("#correct-hero-modal select").val(), imageData);
+                gui.saveHeroBanImage(jQuery("#correct-hero-modal select").val(), imageData);
                 // Hide modal
                 jQuery("#correct-hero-modal").modal("hide");
                 // Update app
-                app.setModalActive(false);
-                app.render();
+                gui.setModalActive(false);
 
             });
         } else {
             jQuery("#correct-hero-modal .btn-primary").off("click").on("click", function (e) {
                 e.preventDefault();
                 // Save correction
-                app.screen.getHeroes().addCorrection(heroNameFailed, jQuery("#correct-hero-modal select").val());
+                gui.saveCorrection(heroNameFailed, jQuery("#correct-hero-modal select").val());
                 // Hide modal
                 jQuery("#correct-hero-modal").modal("hide");
                 // Update app
-                app.setModalActive(false);
-                app.render();
+                gui.setModalActive(false);
             });
         }
         jQuery("#correct-hero-modal").modal("show");
         jQuery("#correct-hero-modal").off("hidden.bs.modal").on("hidden.bs.modal", function () {
             // Update app
-            app.setModalActive(false);
-            app.render();
+            gui.setModalActive(false);
         });
         // Prevent re-rendering while the modal is open
-        app.setModalActive(true);
+        gui.setModalActive(true);
     });
 
 });

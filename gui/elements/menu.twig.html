@@ -2,14 +2,14 @@
     <a href="#" class="navbar-brand">
         <img class="navbar-brand-icon" src="../build/icon_64x64.png" class="img-fluid">
         Hots-Drafter
-        {% if app.debugEnabled %}
+        {% if gui.debugEnabled %}
             <span class="badge badge-info ml-3 debug-step">
-                {{ app.debugStep }}
+                {{ gui.debugStep }}
             </span>
         {% endif %}
     </a>
     <ul class="navbar-nav ml-auto">
-        <li class="nav-item{% if pageActive=="main" or pageActive=="wait" or pageActive=="update" %} active{% endif %}">
+        <li class="nav-item{% if gui.page=="main" or gui.page=="wait" or gui.page=="update" %} active{% endif %}">
             <a href="#draft" data-action="draft" class="nav-link">
                 <i class="fa fa-users"></i>
                 Draft
@@ -21,7 +21,7 @@
                 Force Update
             </a>
         </li>
-        <li class="nav-item{% if pageActive=="config" %} active{% endif %}">
+        <li class="nav-item{% if gui.page=="config" %} active{% endif %}">
             <a href="#config" data-action="config" class="nav-link">
                 <i class="fa fa-cog"></i>
                 Config
@@ -40,19 +40,16 @@
 jQuery(function() {
 
     jQuery("[data-action=\"draft\"]").on("click", function() {
-        app.getConfig().hide();
-        app.render();
+        gui.changePage("main");
     });
     jQuery("[data-action=\"config\"]").on("click", function() {
-        app.getConfig().show();
-        app.render();
+        gui.changePage("config");
     });
     jQuery("[data-action=\"forceUpdate\"]").on("click", function() {
-        app.screen.clear();
-        app.update();
+        gui.forceUpdate();
     });
     jQuery("[data-action=\"quit\"]").on("click", function() {
-        window.close();
+        gui.quit();
     });
 
 });

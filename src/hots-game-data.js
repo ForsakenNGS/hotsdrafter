@@ -5,21 +5,28 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const jimp = require('jimp');
+const EventEmitter = require('events');
 
 // Local classes
-const PromiseGroup = require('./promise-group.js');
 const HotsHelpers = require('./hots-helpers.js');
 
-class HotsHeroes {
+class HotsGameData extends EventEmitter {
 
     constructor(language) {
+        super();
         this.language = language;
         this.heroes = {
             name: [],
             details: {},
             corrections: {}
         };
-        // Load heroes and exceptions from disk
+        this.maps = {
+            name: []
+        };
+        this.substitutions = {
+            "ETC": "E.T.C."
+        };
+        // Load gameData and exceptions from disk
         this.load();
     }
     add(name) {
@@ -79,10 +86,8 @@ class HotsHeroes {
         return (this.heroes.name.indexOf(name) !== -1);
     }
     fixName(name) {
-        switch (name) {
-            case "ETC":
-                name = "E.T.C.";
-                break;
+        if (this.substitutions.hasOwnProperty(name)) {
+          name = this.substitutions[name];
         }
         name = name.toUpperCase();
         return name;
@@ -95,7 +100,7 @@ class HotsHeroes {
         return path.join(HotsHelpers.getStorageDir(), "heroes", heroName+"_crop.png");
     }
     getFile() {
-        return path.join(HotsHelpers.getStorageDir(), "heroes.json");
+        return path.join(HotsHelpers.getStorageDir(), "gameData.json");
     }
     load() {
         let storageFile = this.getFile();
@@ -109,7 +114,7 @@ class HotsHeroes {
             let cacheData = JSON.parse(cacheContent.toString());
             this.heroes = cacheData;
         } catch (e) {
-            console.error("Failed to read heroes data!");
+            console.error("Failed to read gameData data!");
             console.error(e);
         }
     }
@@ -127,8 +132,7 @@ class HotsHeroes {
     }
     update() {
         let url = "https://heroesofthestorm.com/"+this.language+"/heroes/";
-        let updatePromise = new PromiseGroup();
-        updatePromise.add(new Promise((resolve, reject) => {
+        return new Promise((resolve, reject) => {
             request({
                 'method': 'GET',
                 'uri': url,
@@ -145,37 +149,63 @@ class HotsHeroes {
                     reject('Invalid status code <' + response.statusCode + '>\n'+body);
                     return;
                 }
-                this.updateHandler(body, updatePromise);
-                updatePromise.trigger("start", updatePromise);
-                resolve();
+                this.updateHandler(body).catch((error) => {
+                    reject(error);
+                }).then(() => {
+                    resolve();
+                });
             });
-        }));
-        return updatePromise;
-    }
-    updateHandler(content, updatePromise) {
-        let self = this;
-        let page = cheerio.load(content);
-        // Load heroesByName
-        const heroDataVar = "window.blizzard.hgs.heroData";
-        page("script").each(function() {
-            let script = page(this).html();
-            if (script.indexOf(heroDataVar) === 0) {
-                let heroDataRaw = script.substr(heroDataVar.length + 3);
-                heroDataRaw = heroDataRaw.substr(0, heroDataRaw.indexOf(";\n"));
-                let heroData = JSON.parse(heroDataRaw);
-                for (let i = 0; i < heroData.length; i++) {
-                    let hero = heroData[i];
-                    let heroImageUrl = hero.circleIcon;
-                    let heroName = self.fixName(hero.name);
-                    self.add(heroName);
-                    self.addDetails(heroName, hero);
-                    updatePromise.add( self.downloadHeroIcon(heroName, heroImageUrl) );
-                }
-            }
         });
-        this.save();
+    }
+    updateHandler(content) {
+        return new Promise((resolve, reject) => {
+            let self = this;
+            let page = cheerio.load(content);
+            // Load heroesByName
+            const heroDataVar = "window.blizzard.hgs.heroData";
+            let downloads = [];
+            let downloadsDone = 0;
+            let downloadsFailed = 0;
+            page("script").each(function() {
+                let script = page(this).html();
+                if (script.indexOf(heroDataVar) === 0) {
+                    let heroDataRaw = script.substr(heroDataVar.length + 3);
+                    heroDataRaw = heroDataRaw.substr(0, heroDataRaw.indexOf(";\n"));
+                    let heroData = JSON.parse(heroDataRaw);
+                    for (let i = 0; i < heroData.length; i++) {
+                        let hero = heroData[i];
+                        let heroImageUrl = hero.circleIcon;
+                        let heroName = self.fixName(hero.name);
+                        self.add(heroName);
+                        self.addDetails(heroName, hero);
+                        let downloadPromise = self.downloadHeroIcon(heroName, heroImageUrl);
+                        downloadPromise.then(() => {
+                            downloadsDone++;
+                            self.emit("download.progress", Math.round(downloadsDone * 100 / downloads.length));
+                        }).catch((error) => {
+                            downloadsFailed++;
+                        });
+                        downloads.push(downloadPromise);
+                    }
+                }
+            });
+            if (downloads.length > 0) {
+                this.emit("download.start");
+                Promise.all(downloads).catch((error) => {
+                    reject(error);
+                }).then(() => {
+                    resolve(true);
+                }).finally(() => {
+                    this.emit("download.done", (downloadsFailed === 0));
+                });
+            } else {
+                // No downloads pending, done!
+                resolve(true);
+            }
+            this.save();
+        });
     }
 
 }
 
-module.exports = HotsHeroes;
+module.exports = HotsGameData;

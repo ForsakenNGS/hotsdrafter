@@ -1,4 +1,4 @@
-const HotsDraftApp = require('../src/hots-draft-app.js');
+const HotsDraftGui = require('../src/hots-draft-gui.js');
 
-app = new HotsDraftApp(window);
-app.debug(true);
+gui = new HotsDraftGui(window);
+gui.debug(true);

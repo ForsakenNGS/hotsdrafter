@@ -97,19 +97,6 @@
         {
           "name": "@electron-forge/maker-zip",
           "config": {}
-        },
-        {
-          "name": "@electron-forge/maker-flatpak",
-          "config": {
-            "options": {
-              "categories": [
-                "Game"
-              ],
-              "productName": "Hots-Drafter",
-              "description": "Predict and support drafts for running hots matches",
-              "icon": "build/icon.png"
-            }
-          }
         }
       ],
       "publishers": [

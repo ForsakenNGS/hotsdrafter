@@ -1,7 +1,7 @@
 {% extends "../frame.twig.html" %}
 {% block content %}
     <div class="text-center p-5">
-        {% if app.isGameActive() %}
+        {% if gui.gameActive %}
         <h1>Match in progress...</h1>
         {% else %}
         <h1>Waiting to start the draft...</h1>

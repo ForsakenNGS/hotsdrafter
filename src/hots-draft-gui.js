@@ -28,6 +28,7 @@ class HotsDraftGui extends EventEmitter {
         this.config = null;
         this.displays = null;
         this.draft = null;
+        this.gameActive = false;
         this.gameData = null;
         this.modalActive = false;
         this.updateProgress = 0;
@@ -53,6 +54,12 @@ class HotsDraftGui extends EventEmitter {
             case "draft":
                 this.draft = parameters[0];
                 this.renderPage();
+                break;
+            case "game.start":
+                this.gameActive = true;
+                break;
+            case "game.end":
+                this.gameActive = false;
                 break;
             case "gameData":
                 this.gameData = parameters[0];

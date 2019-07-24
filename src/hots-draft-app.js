@@ -82,7 +82,6 @@ class HotsDraftApp extends EventEmitter {
             this.checkNextUpdate();
             if (this.debugEnabled) {
                 console.log("Analysing screenshot failed!");
-                console.log(error);
             }
         });
         this.screen.on("detect.success", () => {
@@ -132,7 +131,7 @@ class HotsDraftApp extends EventEmitter {
                 HotsHelpers.getConfig().setOption(...parameters);
                 break;
             case "hero.correct":
-                this.gameData.addCorrection(...parameters);
+                this.gameData.addHeroCorrection(...parameters);
                 break;
             case "provider.action":
                 this.provider.handleGuiAction(parameters);
@@ -429,6 +428,8 @@ class HotsDraftApp extends EventEmitter {
                 this.updateDraftData();
                 this.screen.clear();
                 this.emit("game.started");
+                this.sendEvent("gui", "game.start");
+                this.setDebugStep("Waiting for game to end...");
                 if (this.debugEnabled) {
                     console.log("=== GAME STARTED ===");
                 }
@@ -436,6 +437,7 @@ class HotsDraftApp extends EventEmitter {
                 // Game ended
                 this.submitReplayData();
                 this.emit("game.ended");
+                this.sendEvent("gui", "game.end");
                 if (this.debugEnabled) {
                     console.log("=== GAME ENDED ===");
                 }
@@ -507,7 +509,7 @@ class HotsDraftApp extends EventEmitter {
             }
             this.screen.detect(image).catch((error) => {
                 if (this.debugEnabled) {
-                    if (this.screen.getMap() === null) {
+                    if (error.message === "No map text found at the expected location!") {
                         console.log("Screenshot not detected: No draft found (Map name not detected)")
                     } else {
                         console.error(error);

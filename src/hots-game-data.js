@@ -29,16 +29,22 @@ class HotsGameData extends EventEmitter {
         // Load gameData and exceptions from disk
         this.load();
     }
-    add(name) {
-        name = this.fixName(name);
-        if (this.heroes.name.indexOf(name) === -1) {
+    addHero(name) {
+        name = this.fixHeroName(name);
+        if (!this.heroExists(name)) {
             this.heroes.name.push(name);
         }
     }
-    addDetails(name, details) {
+    addMap(name) {
+        name = this.fixMapName(name);
+        if (!this.mapExists(name)) {
+            this.maps.name.push(name);
+        }
+    }
+    addHeroDetails(name, details) {
         this.heroes.details[name] = details;
     }
-    addCorrection(from, to) {
+    addHeroCorrection(from, to) {
         this.heroes.corrections[from] = to;
         this.save();
     }
@@ -76,27 +82,37 @@ class HotsGameData extends EventEmitter {
             }
         });
     }
-    correct(name) {
+    correctHeroName(name) {
         if (this.heroes.corrections.hasOwnProperty(name)) {
             return this.heroes.corrections[name];
         }
         return name;
     }
-    exists(name) {
+    heroExists(name) {
         return (this.heroes.name.indexOf(name) !== -1);
     }
-    fixName(name) {
+    mapExists(name) {
+        return (this.maps.name.indexOf(name) !== -1);
+    }
+    fixMapName(name) {
+        name = name.toUpperCase();
+        return name;
+    }
+    fixHeroName(name) {
         if (this.substitutions.hasOwnProperty(name)) {
           name = this.substitutions[name];
         }
         name = name.toUpperCase();
         return name;
     }
-    getNames() {
+    getMapNames() {
+        return this.maps.name;
+    }
+    getHeroNames() {
         return this.heroes.name;
     }
-    getImage(heroName) {
-        heroName = this.fixName(heroName);
+    getHeroImage(heroName) {
+        heroName = this.fixHeroName(heroName);
         return path.join(HotsHelpers.getStorageDir(), "heroes", heroName+"_crop.png");
     }
     getFile() {
@@ -112,7 +128,10 @@ class HotsGameData extends EventEmitter {
         let cacheContent = fs.readFileSync(storageFile);
         try {
             let cacheData = JSON.parse(cacheContent.toString());
-            this.heroes = cacheData;
+            if (cacheData.formatVersion == 1) {
+                this.maps = cacheData.maps;
+                this.heroes = cacheData.heroes;
+            }
         } catch (e) {
             console.error("Failed to read gameData data!");
             console.error(e);
@@ -128,15 +147,26 @@ class HotsGameData extends EventEmitter {
         }
         // Write specific type into cache
         let storageFile = this.getFile();
-        fs.writeFileSync( storageFile, JSON.stringify(this.heroes) );
+        fs.writeFileSync( storageFile, JSON.stringify({
+            formatVersion: 1,
+            maps: this.maps,
+            heroes: this.heroes
+        }) );
     }
     update() {
-        let url = "https://heroesofthestorm.com/"+this.language+"/heroes/";
+        let updatePromises = [
+          this.updateMaps(),
+          this.updateHeroes()
+        ];
+        return Promise.all(updatePromises);
+    }
+    updateMaps() {
+        let url = "https://heroesofthestorm.com/"+this.language+"/battlegrounds/";
         return new Promise((resolve, reject) => {
             request({
                 'method': 'GET',
                 'uri': url,
-                headers: {
+                'headers': {
                     'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36'
                 },
                 'jar': true
@@ -149,15 +179,53 @@ class HotsGameData extends EventEmitter {
                     reject('Invalid status code <' + response.statusCode + '>\n'+body);
                     return;
                 }
-                this.updateHandler(body).catch((error) => {
-                    reject(error);
-                }).then(() => {
+                this.updateMapsFromResponse(body).then(() => {
                     resolve();
+                }).catch((error) => {
+                    reject(error);
                 });
             });
         });
     }
-    updateHandler(content) {
+    updateMapsFromResponse(content) {
+        return new Promise((resolve, reject) => {
+            let self = this;
+            let page = cheerio.load(content);
+            page(".BattlegroundText-header").each(function() {
+                self.addMap( page(this).text() );
+            });
+            resolve();
+            this.save();
+        });
+    }
+    updateHeroes() {
+        let url = "https://heroesofthestorm.com/"+this.language+"/heroes/";
+        return new Promise((resolve, reject) => {
+            request({
+                'method': 'GET',
+                'uri': url,
+                'headers': {
+                    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36'
+                },
+                'jar': true
+            }, (error, response, body) => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
+                if (response.statusCode !== 200) {
+                    reject('Invalid status code <' + response.statusCode + '>\n'+body);
+                    return;
+                }
+                this.updateHeroesFromResponse(body).then(() => {
+                    resolve();
+                }).catch((error) => {
+                    reject(error);
+                });
+            });
+        });
+    }
+    updateHeroesFromResponse(content) {
         return new Promise((resolve, reject) => {
             let self = this;
             let page = cheerio.load(content);
@@ -175,9 +243,9 @@ class HotsGameData extends EventEmitter {
                     for (let i = 0; i < heroData.length; i++) {
                         let hero = heroData[i];
                         let heroImageUrl = hero.circleIcon;
-                        let heroName = self.fixName(hero.name);
-                        self.add(heroName);
-                        self.addDetails(heroName, hero);
+                        let heroName = self.fixHeroName(hero.name);
+                        self.addHero(heroName);
+                        self.addHeroDetails(heroName, hero);
                         let downloadPromise = self.downloadHeroIcon(heroName, heroImageUrl);
                         downloadPromise.then(() => {
                             downloadsDone++;

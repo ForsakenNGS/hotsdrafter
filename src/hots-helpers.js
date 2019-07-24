@@ -123,8 +123,10 @@ class HotsHelpers {
         if (typeof colorNegative === "undefined") {
             colorNegative = 0x000000FF;
         }
-        let textMin = image.bitmap.width-1;
-        let textMax = 0;
+        let textMinX = image.bitmap.width-1;
+        let textMaxX = 0;
+        let textMinY = image.bitmap.height-1;
+        let textMaxY = 0;
         for (let x = 0; x < image.bitmap.width; x++) {
             let positive = false;
             let negative = false;
@@ -134,6 +136,8 @@ class HotsHelpers {
                 if (pixelMatch > 0) {
                     image.setPixelColor( HotsHelpers.imageColorMix(colorPositive, colorNegative, pixelMatch / 255), x, y );
                     positive = true;
+                    textMinY = Math.min(textMinY, y);
+                    textMaxY = Math.max(textMaxY, y);
                 } else {
                     image.setPixelColor(colorNegative, x, y);
                 }
@@ -142,16 +146,18 @@ class HotsHelpers {
                 }
             }
             if (positive && !negative) {
-                textMin = Math.min(textMin, x);
-                textMax = Math.max(textMax, x);
+                textMinX = Math.min(textMinX, x);
+                textMaxX = Math.max(textMaxX, x);
             }
         }
-        textMin = Math.max(0, textMin - 8);
-        textMax = Math.min(image.bitmap.width-1, textMax + 8);
-        if (textMax < textMin) {
+        textMinX = Math.max(0, textMinX - 8);
+        textMaxX = Math.min(image.bitmap.width-1, textMaxX + 8);
+        textMinY = Math.max(0, textMinY - 4);
+        textMaxY = Math.min(image.bitmap.height-1, textMaxY + 4);
+        if (textMaxX < textMinX) {
             return false;
         } else {
-            image.crop(textMin, 0, textMax - textMin, image.bitmap.height);
+            image.crop(textMinX, textMinY, textMaxX - textMinX, textMaxY - textMinY);
             return true;
         }
     }

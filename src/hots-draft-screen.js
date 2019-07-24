@@ -49,6 +49,7 @@ class HotsDraftScreen extends EventEmitter {
         this.offsets["mapSize"] = HotsHelpers.scaleOffset(DraftLayout["mapSize"], baseSize, targetSize);
         this.offsets["mapPos"] = HotsHelpers.scaleOffset(DraftLayout["mapPos"], baseSize, targetSize);
         this.offsets["banSize"] = HotsHelpers.scaleOffset(DraftLayout["banSize"], baseSize, targetSize);
+        this.offsets["banSizeCompare"] = HotsHelpers.scaleOffset(DraftLayout["banSizeCompare"], baseSize, targetSize);
         this.offsets["banCheckSize"] = HotsHelpers.scaleOffset(DraftLayout["banCheckSize"], baseSize, targetSize);
         this.offsets["banCropSize"] = HotsHelpers.scaleOffset(DraftLayout["banCropSize"], baseSize, targetSize);
         this.offsets["timerPos"] = HotsHelpers.scaleOffset(DraftLayout["timerPos"], baseSize, targetSize);
@@ -117,7 +118,7 @@ class HotsDraftScreen extends EventEmitter {
                         let heroName = match[1];
                         loadPromises.push(
                             jimp.read(directoryPath+"/"+file).then(async (image) => {
-                                this.banImages[heroName] = image;
+                                this.banImages[heroName] = image.resize(this.offsets["banSizeCompare"].x, this.offsets["banSizeCompare"].y);
                             })
                         );
                     }
@@ -148,7 +149,6 @@ class HotsDraftScreen extends EventEmitter {
         this.generateDebugFiles = generateDebugFiles;
     }
     clear() {
-        this.screenshot = null;
         this.map = null;
         this.teams = [];
         this.emit("change");
@@ -161,9 +161,9 @@ class HotsDraftScreen extends EventEmitter {
                 return;
             }
             this.emit("detect.start");
-            jimp.read(screenshotFile).then((image) => {
+            jimp.read(screenshotFile).then((screenshot) => {
                 // Screenshot file loaded
-                this.screenshot = image;
+                this.screenshot = screenshot;
                 this.emit("detect.screenshot.load.success");
                 // Load offsets
                 this.loadOffsets();
@@ -225,8 +225,8 @@ class HotsDraftScreen extends EventEmitter {
             // Detect map name using tesseract
             mapNameImg.getBufferAsync(jimp.MIME_PNG).then((buffer) => {
                 worker.recognize(buffer, this.tessLangs, this.tessParams).then((result) => {
-                    let mapName = result.text.trim();
-                    if (mapName !== "") {
+                    let mapName = this.app.gameData.fixMapName( result.text.trim() );
+                    if ((mapName !== "") && (this.app.gameData.mapExists(mapName))) {
                         this.setMap(mapName);
                         resolve(true);
                     } else {
@@ -359,14 +359,16 @@ class HotsDraftScreen extends EventEmitter {
                     // No ban yet
                     team.addBan(i, null);
                 } else {
+                    let banImgCompare = banImg.clone().resize(this.offsets["banSizeCompare"].x, this.offsets["banSizeCompare"].y);
                     if (this.generateDebugFiles) {
                         // Debug output
                         banImg.write("debug/" + team.color + "_ban" + i + "_Test.png");
+                        banImgCompare.write("debug/" + team.color + "_ban" + i + "_TestCompare.png");
                     }
                     let matchBestHero = null;
                     let matchBestValue = 200;
                     for (let heroName in this.banImages) {
-                        let heroValue = HotsHelpers.imageCompare(banImg, this.banImages[heroName]);
+                        let heroValue = HotsHelpers.imageCompare(banImgCompare, this.banImages[heroName]);
                         if (heroValue > matchBestValue) {
                             matchBestHero = heroName;
                             matchBestValue = heroValue;
@@ -455,9 +457,9 @@ class HotsDraftScreen extends EventEmitter {
                             imageHeroName = buffer;
                             return worker.recognize(buffer, this.tessLangs, this.tessParams);
                         }).then((result) => {
-                            let heroName = this.app.gameData.correct(result.text.trim());
+                            let heroName = this.app.gameData.correctHeroName(result.text.trim());
                             if (heroName !== "PICKING") {
-                                let detectionError = !this.app.gameData.exists(heroName);
+                                let detectionError = !this.app.gameData.heroExists(heroName);
                                 player.setCharacter(heroName, detectionError);
                                 player.setImageHeroName(imageHeroName);
                                 player.setLocked(heroLocked);

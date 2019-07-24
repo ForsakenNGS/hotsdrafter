@@ -11,7 +11,7 @@
     }],
     "banBackground": [{
       "color": { "r": 16, "g": 4, "b": 24 },
-      "toleranceLum": 30,
+      "toleranceLum": 20,
       "toleranceHue": 20
     }],
     "banActive": [
@@ -26,8 +26,8 @@
         "toleranceHue": 15
       },
       {
-        "color": { "r": 150, "g": 20, "b": 135 },
-        "toleranceLum": 25,
+        "color": { "r": 240, "g": 0, "b": 210 },
+        "toleranceLum": 30,
         "toleranceHue": 20
       }
     ],
@@ -51,7 +51,7 @@
       "ban": [
         {
           "comment": "Timer when a team banning",
-          "color": { "r": 160, "g": 70, "b": 190 },
+          "color": { "r": 140, "g": 40, "b": 170 },
           "toleranceLum": 25,
           "toleranceHue": 5
         }
@@ -170,30 +170,60 @@
         {
           "comment": "Blue team is currently picking/banning",
           "color": { "r": 145, "g": 180, "b": 200 },
-          "toleranceLum": 35,
-          "toleranceHue": 25
+          "toleranceLum": 50,
+          "toleranceHue": 15
+        },
+        {
+          "comment": "Blue team is currently picking/banning",
+          "color": { "r": 125, "g": 155, "b": 185 },
+          "toleranceLum": 30,
+          "toleranceHue": 20
         }
       ],
       "blue-inactive": [
         {
           "comment": "Red team is currently picking/banning",
-          "color": { "r": 150, "g": 125, "b": 160 },
+          "color": { "r": 155, "g": 130, "b": 165 },
+          "toleranceLum": 30,
+          "toleranceHue": 20
+        },
+        {
+          "comment": "Red team is currently picking/banning",
+          "color": { "r": 130, "g": 110, "b": 140 },
           "toleranceLum": 30,
           "toleranceHue": 20
         }
       ],
       "red-active": [
         {
-          "comment": "Blue team is currently picking/banning",
+          "comment": "Red team is currently picking/banning",
+          "color": { "r": 220, "g": 140, "b": 160 },
+          "toleranceLum": 50,
+          "toleranceHue": 15
+        },
+        {
+          "comment": "Red team is currently picking/banning",
           "color": { "r": 210, "g": 105, "b": 115 },
-          "toleranceLum": 30,
+          "toleranceLum": 50,
+          "toleranceHue": 15
+        },
+        {
+          "comment": "Red team is currently picking/banning",
+          "color": { "r": 175, "g": 90, "b": 95 },
+          "toleranceLum": 20,
           "toleranceHue": 20
         }
       ],
       "red-inactive": [
         {
-          "comment": "Red team is currently picking/banning",
-          "color": { "r": 145, "g": 125, "b": 155 },
+          "comment": "Blue team is currently picking/banning",
+          "color": { "r": 155, "g": 130, "b": 165 },
+          "toleranceLum": 30,
+          "toleranceHue": 20
+        },
+        {
+          "comment": "Blue team is currently picking/banning",
+          "color": { "r": 130, "g": 110, "b": 140 },
           "toleranceLum": 30,
           "toleranceHue": 20
         }
@@ -220,6 +250,10 @@
     "x": 49,
     "y": 32
   },
+  "banSizeCompare": {
+    "x": 20,
+    "y": 20
+  },
   "banCheckSize": {
     "x": 300,
     "y": 10
@@ -238,7 +272,7 @@
   },
   "nameHeroSizeRotated": {
     "x": 500,
-    "y": 70
+    "y": 78
   },
   "namePlayerSizeRotated": {
     "x": 500,
@@ -276,12 +310,12 @@
       "bans": [
         {
           "index": 0,
-          "x": 290,
+          "x": 292,
           "y": 36
         },
         {
           "index": 1,
-          "x": 390,
+          "x": 391,
           "y": 36
         },
         {
@@ -305,7 +339,7 @@
       },
       "nameHeroRotated": {
         "x": 60,
-        "y": 260
+        "y": 252
       },
       "namePlayerRotated": {
         "x": 110,
@@ -343,17 +377,17 @@
       "bans": [
         {
           "index": 0,
-          "x": 1390,
+          "x": 1388,
           "y": 36
         },
         {
           "index": 1,
-          "x": 1490,
+          "x": 1487,
           "y": 36
         },
         {
           "index": 2,
-          "x": 1590,
+          "x": 1586,
           "y": 36
         }
       ],
@@ -372,7 +406,7 @@
       },
       "nameHeroRotated": {
         "x": 105,
-        "y": 256
+        "y": 248
       },
       "namePlayerRotated": {
         "x": 54,

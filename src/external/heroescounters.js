@@ -36,7 +36,6 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
         }
         this.heroesByName[name.toUpperCase()] = hero;
         this.heroesById[id] = hero;
-        //this.screen.getGameData().add(name);
     }
     loadCoreData(response) {
         let self = this;
@@ -189,14 +188,14 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
         if (teamBlue !== null) {
             let bansBlue = teamBlue.getBans();
             for (let i = 0; i < bansBlue.length; i++) {
-                if (bansBlue[i] === null) {
+                if (bansBlue[i] === "???") {
                     continue;
                 }
                 let hero = this.getHeroByName( bansBlue[i] );
                 if (hero !== null) {
                     this.bans.push(hero.id);
                 } else {
-                    console.error("Hero not found: "+bansBlue[i].getCharacter());
+                    console.error("Hero not found: "+bansBlue[i]);
                 }
             }
             let playersBlue = teamBlue.getPlayers();
@@ -218,7 +217,7 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
         if (teamRed !== null) {
             let bansRed = teamRed.getBans();
             for (let i = 0; i < bansRed.length; i++) {
-                if (bansRed[i] === null) {
+                if (bansRed[i] === "???") {
                     continue;
                 }
                 let hero = this.getHeroByName( bansRed[i] );

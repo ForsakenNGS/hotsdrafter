@@ -161,6 +161,9 @@ class HotsHelpers {
             return true;
         }
     }
+    static imageOcrOptimize(image) {
+        return image.greyscale().contrast(0.4).normalize().blur(1).scale(0.5);
+    }
     static imagePixelCompare(pixelColorA, pixelColorB) {
         let colorA = { b: (pixelColorA >> 8) & 0xFF, g: (pixelColorA >> 16) & 0xFF, r: (pixelColorA >> 24) & 0xFF };
         let colorB = { b: (pixelColorB >> 8) & 0xFF, g: (pixelColorB >> 16) & 0xFF, r: (pixelColorB >> 24) & 0xFF };

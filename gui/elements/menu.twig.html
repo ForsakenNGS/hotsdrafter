@@ -15,11 +15,21 @@
                 Draft
             </a>
         </li>
-        <li class="nav-item">
-            <a href="#forceUpdate" data-action="forceUpdate" class="nav-link">
-                <i class="fa fa-sync"></i>
-                Force Update
+        <li class="nav-item dropdown">
+            <a href="#dev" class="nav-link dropdown-toggle" data-toggle="dropdown">
+                <i class="fab fa-dev"></i>
+                Dev-Tools
             </a>
+            <div class="dropdown-menu">
+                <a href="#forceUpdate" data-action="forceUpdate" class="dropdown-item">
+                    <i class="fa fa-sync"></i>
+                    Force Update
+                </a>
+                <a href="#detectionTuner" data-action="detectionTuner" class="dropdown-item">
+                    <i class="fa fa-microchip"></i>
+                    Detection Tuning
+                </a>
+            </div>
         </li>
         <li class="nav-item{% if gui.page=="config" %} active{% endif %}">
             <a href="#config" data-action="config" class="nav-link">

@@ -1,0 +1,126 @@
+<div id="detection-tuning-modal" class="modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-xl text-dark" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tune text detection</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-action="detectionTunerUpdate">Refresh</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+jQuery(function() {
+
+    const jimp = require('jimp');
+    const HotsHelpers = require('../src/hots-helpers.js');
+
+    let updateTimer = null;
+    let updateActive = false;
+    let bindUpdateEvents = function() {
+        jQuery("#detection-tuning-modal .tab-pane").each(function() {
+            let tab = jQuery(this);
+            jQuery(tab).find("input[data-color]").on("change", function() {
+                if (updateTimer !== null) {
+                    clearTimeout(updateTimer);
+                    updateTimer = null;
+                }
+                updateTimer = setTimeout(function() {
+                    updateDetectionTunerImages(tab);
+                }, 1000);
+            });
+        });
+    };
+    let getDetectionConfiguration = function(tab) {
+        let config = {
+            colorsPositive: [],
+            colorsNegative: []
+        };
+        jQuery(tab).find("tr.table-success").each(function() {
+            config.colorsPositive.push( getColorConfiguration(this) );
+        });
+        jQuery(tab).find("tr.table-danger").each(function() {
+            config.colorsNegative.push( getColorConfiguration(this) );
+        });
+        return config;
+    };
+    let getColorConfiguration = function(colorRow) {
+        return {
+          "color": {
+              "r": parseInt(jQuery(colorRow).find("[data-color=\"red\"]").val()),
+              "g": parseInt(jQuery(colorRow).find("[data-color=\"green\"]").val()),
+              "b": parseInt(jQuery(colorRow).find("[data-color=\"blue\"]").val())
+          },
+          "toleranceLum": parseInt(jQuery(colorRow).find("[data-color=\"toleranceLum\"]").val()),
+          "toleranceHue": parseInt(jQuery(colorRow).find("[data-color=\"toleranceHue\"]").val())
+        };
+    };
+    let updateDetectionTuner = function() {
+        gui.renderDetectionTunerContent( jQuery("#detection-tuning-modal .modal-body"), function() {
+            bindUpdateEvents();
+        } );
+    };
+    let updateDetectionTunerImages = function(tab) {
+        if (updateActive) {
+            return;
+        }
+        updateActive = true;
+        let config = getDetectionConfiguration(tab);
+        let imageConversions = [];
+        jQuery(tab).find("[data-image=\"original\"]").each(function() {
+            let imageRow = jQuery(this).closest("tr");
+            let imageOriginal = jQuery(this);
+            let imageOriginalBase64 = imageOriginal.attr("src");
+            let imageCleanup = imageRow.find("[data-image=\"cleanup\"]");
+            let bufferOriginal = Buffer.from(imageOriginalBase64.substr( imageOriginalBase64.indexOf("base64,") + 7 ), 'base64');
+            imageConversions.push(
+                jimp.read(bufferOriginal).then((image) => {
+                    // Cleanup and trim map name
+                    HotsHelpers.imageCleanupName(image, config.colorsPositive, config.colorsNegative);
+                    // Invert?
+                    if (jQuery(tab).is("[data-image-invert]")) {
+                        image.invert();
+                    }
+                    // Convert to black on white for optimal detection
+                    HotsHelpers.imageOcrOptimize(image);
+                    // Get base64 of new image
+                    return image.getBase64Async(jimp.MIME_PNG);
+                }).then((imageDataBase64) => {
+                    imageCleanup.attr("src", imageDataBase64)
+                    return true;
+                })
+            );
+        });
+        Promise.all(imageConversions).finally(() => {
+            updateActive = false;
+        });
+    }
+
+    jQuery("[data-action=\"detectionTunerUpdate\"]").on("click", function() {
+        updateDetectionTuner();
+    });
+
+    // Tuning tool for text detection
+    jQuery("[data-action=\"detectionTuner\"]").on("click", function () {
+        updateDetectionTuner();
+        jQuery("#detection-tuning-modal").modal("show");
+        jQuery("#detection-tuning-modal").off("hidden.bs.modal").on("hidden.bs.modal", function () {
+            // Update app
+            gui.setModalActive(false);
+            gui.resumeDetection();
+        });
+        // Prevent re-rendering while the modal is open
+        gui.pauseDetection();
+        gui.setModalActive(true);
+    });
+
+});
+</script>

@@ -1,0 +1,81 @@
+<ul class="nav nav-tabs" role="tablist">
+{% for colorIdent, colorData in debugData %}
+    <li class="nav-item">
+        <a href="#{{ colorIdent }}" class="nav-link{% if loop.first %} active{% endif %}" data-toggle="tab" role="tab">
+            {{ colorIdent }}
+        </a>
+    </li>
+{% endfor %}
+</ul>
+<div class="tab-content">
+{% for colorIdent, colorData in debugData %}
+    <div class="tab-pane{% if loop.first %} active{% endif %}" id="{{ colorIdent }}" role="tabpanel"{% if colorData.colorsInvert %} data-image-invert="true"{% endif %}>
+        <table class="table table-bordered table-condensed mb-3">
+            <tr>
+                <th>Original Image</th>
+                <th>Cleanup Image</th>
+            </tr>
+        {% for image in colorData.images %}
+            <tr>
+                <td>
+                    <img data-image="original" src="{{ image.imgOriginal }}">
+                </td>
+                <td>
+                    <img data-image="cleanup" src="{{ image.imgCleanup }}">
+                </td>
+            </tr>
+        {% endfor %}
+        </table>
+        <table class="table table-bordered table-condensed">
+            <tr>
+                <th>Type</th>
+                <th>R</th>
+                <th>G</th>
+                <th>B</th>
+                <th>Lum. Tol.</th>
+                <th>Hue Tol.</th>
+            </tr>
+        {% for color in colorData.colorsPositive %}
+            <tr class="table-success">
+                <td>Positive</td>
+                <td>
+                    <input type="number" min="0" max="255" data-color="red" value="{{ color.color.r }}" />
+                </td>
+                <td>
+                    <input type="number" min="0" max="255" data-color="green" value="{{ color.color.g }}" />
+                </td>
+                <td>
+                    <input type="number" min="0" max="255" data-color="blue" value="{{ color.color.b }}" />
+                </td>
+                <td>
+                    <input type="number" min="0" max="255" data-color="toleranceLum" value="{{ color.toleranceLum }}" />
+                </td>
+                <td>
+                    <input type="number" min="0" max="360" data-color="toleranceHue" value="{{ color.toleranceHue }}" />
+                </td>
+            </tr>
+        {% endfor %}
+        {% for color in colorData.colorsNegative %}
+            <tr class="table-danger">
+                <td>Negative</td>
+                <td>
+                    <input type="number" min="0" max="255" data-color="red" value="{{ color.color.r }}" />
+                </td>
+                <td>
+                    <input type="number" min="0" max="255" data-color="green" value="{{ color.color.g }}" />
+                </td>
+                <td>
+                    <input type="number" min="0" max="255" data-color="blue" value="{{ color.color.b }}" />
+                </td>
+                <td>
+                    <input type="number" min="0" max="255" data-color="toleranceLum" value="{{ color.toleranceLum }}" />
+                </td>
+                <td>
+                    <input type="number" min="0" max="360" data-color="toleranceHue" value="{{ color.toleranceHue }}" />
+                </td>
+            </tr>
+        {% endfor %}
+        </table>
+    </div>
+{% endfor %}
+</div>

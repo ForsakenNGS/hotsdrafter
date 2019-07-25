@@ -12,7 +12,8 @@ const templates = {
     "main": path.resolve(__dirname, "..", "gui", "pages", "main.twig.html"),
     "config": path.resolve(__dirname, "..", "gui", "pages", "config.twig.html"),
     "wait": path.resolve(__dirname, "..", "gui", "pages", "wait.twig.html"),
-    "update": path.resolve(__dirname, "..", "gui", "pages", "update.twig.html")
+    "update": path.resolve(__dirname, "..", "gui", "pages", "update.twig.html"),
+    "detectionTuningContent": path.resolve(__dirname, "..", "gui", "elements", "detectionTuning.content.twig.html")
 };
 
 class HotsDraftGui extends EventEmitter {
@@ -30,6 +31,7 @@ class HotsDraftGui extends EventEmitter {
         this.draft = null;
         this.gameActive = false;
         this.gameData = null;
+        this.debugData = [];
         this.modalActive = false;
         this.updateProgress = 0;
         this.registerEvents();
@@ -63,6 +65,9 @@ class HotsDraftGui extends EventEmitter {
                 break;
             case "gameData":
                 this.gameData = parameters[0];
+                break;
+            case "debugData":
+                this.debugData = parameters[0];
                 break;
             case "debug.step.update":
                 this.setDebugStep(parameters[0]);
@@ -162,6 +167,14 @@ class HotsDraftGui extends EventEmitter {
         jQuery(".page").find(".progress-bar").css("width", this.updateProgress+"%");
     }
 
+    pauseDetection() {
+        this.sendEvent("gui", "detection.pause");
+    }
+
+    resumeDetection() {
+        this.sendEvent("gui", "detection.resume");
+    }
+
     quit() {
         this.sendEvent("gui", "quit");
     }
@@ -177,6 +190,31 @@ class HotsDraftGui extends EventEmitter {
                 console.error(error);
             } else {
                 jQuery(".page").html(html);
+            }
+        });
+    }
+
+    renderDetectionTunerContent(targetElement, cbDone) {
+        let debugDataGrouped = {};
+        for (let i = 0; i < this.debugData.length; i++) {
+            if (!debugDataGrouped.hasOwnProperty(this.debugData[i].colorsIdent)) {
+                debugDataGrouped[this.debugData[i].colorsIdent] = {
+                    images: [],
+                    colorsPositive: this.debugData[i].colorsPositive,
+                    colorsNegative: this.debugData[i].colorsNegative,
+                    colorsInvert: this.debugData[i].colorsInvert
+                };
+            }
+            debugDataGrouped[this.debugData[i].colorsIdent].images.push(this.debugData[i]);
+        }
+        Twig.renderFile(templates["detectionTuningContent"], {
+            debugData: debugDataGrouped
+        }, (error, html) => {
+            if (error) {
+                console.error(error);
+            } else {
+                jQuery(targetElement).html(html);
+                cbDone();
             }
         });
     }

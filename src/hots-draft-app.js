@@ -31,11 +31,9 @@ class HotsDraftApp extends EventEmitter {
         this.app = app;
         this.window = window;
         this.debugEnabled = false;
-        this.debugStep = "Initializing...";
         this.gameData = new HotsGameData("en-us");
         this.screen = new HotsDraftScreen(this);
         this.provider = null;
-        this.providerUpdated = false;
         this.displays = null;
         // Status fields
         this.statusDownloadPending = false;
@@ -47,6 +45,7 @@ class HotsDraftApp extends EventEmitter {
         this.statusDraftActive = false;
         this.statusModalActive = false;
         this.statusDetectionRunning = false;
+        this.statusDetectionPaused = false;
         // Initialize
         this.registerEvents();
     }
@@ -93,6 +92,9 @@ class HotsDraftApp extends EventEmitter {
         });
         this.screen.on("detect.done", () => {
             this.statusDetectionRunning = false;
+            if (this.debugEnabled) {
+                this.sendDebugData();
+            }
         });
         this.screen.on("detect.map.start", () => {
             this.setDebugStep("Detecting map...")
@@ -129,6 +131,12 @@ class HotsDraftApp extends EventEmitter {
                 break;
             case "config.option.set":
                 HotsHelpers.getConfig().setOption(...parameters);
+                break;
+            case "detection.pause":
+                this.statusDetectionPaused = true;
+                break;
+            case "detection.resume":
+                this.statusDetectionPaused = false;
                 break;
             case "hero.correct":
                 this.gameData.addHeroCorrection(...parameters);
@@ -167,6 +175,11 @@ class HotsDraftApp extends EventEmitter {
             substitutions: this.gameData.substitutions
         });
     }
+    sendDebugData() {
+        if (this.screen.debugData.length > 1) {
+            this.sendEvent("gui", "debugData", this.screen.debugData);
+        }
+    }
     init() {
         this.initProvider();
         this.downloadGameData();
@@ -175,7 +188,6 @@ class HotsDraftApp extends EventEmitter {
     initProvider() {
         // Init provider
         this.provider = this.createProvider();
-        this.providerUpdated = false;
         this.provider.init();
         this.provider.on("change", () => {
             if (this.statusDraftActive) {
@@ -489,7 +501,7 @@ class HotsDraftApp extends EventEmitter {
         this.statusDraftData = this.collectDraftData();
     }
     updateScreenshot() {
-        if (this.statusDetectionRunning || this.screen.updateActive) {
+        if (this.statusDetectionRunning || this.screen.updateActive || this.statusDetectionPaused) {
             return;
         }
         this.statusDetectionRunning = true;

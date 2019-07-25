@@ -19,7 +19,10 @@ class HotsDraftScreen extends EventEmitter {
     constructor(app) {
         super();
         this.app = app;
+        this.debugData = [];
         this.updateActive = false;
+        this.jimpScaleMode = jimp.RESIZE_HERMITE;
+        this.jimpRotateMode = jimp.RESIZE_HERMITE;
         this.tessLangs = "eng";
         this.tessParams = {
             tessedit_pageseg_mode: TesseractTypes.PSM.SINGLE_LINE
@@ -148,6 +151,34 @@ class HotsDraftScreen extends EventEmitter {
     debug(generateDebugFiles) {
         this.generateDebugFiles = generateDebugFiles;
     }
+    debugDataClear() {
+        this.debugData = [];
+    }
+    debugDataAdd(imgOriginal, imgCleanup, colorsIdent, colorsPositive, colorsNegative, invert) {
+        if (!this.generateDebugFiles) {
+            return;
+        }
+        let imgOriginalBase64 = null;
+        let imgCleanupBase64 = null;
+        imgOriginal.getBase64Async(jimp.MIME_PNG).then((imageData) => {
+            imgOriginalBase64 = imageData;
+            return imgCleanup.getBase64Async(jimp.MIME_PNG);
+        }).then((imageData) => {
+            imgCleanupBase64 = imageData;
+        }).catch((error) => {
+            console.error("Failed to generate debug data!");
+            console.error(error);
+        }).finally(() => {
+            this.debugData.push({
+                imgOriginal: imgOriginalBase64,
+                imgCleanup: imgCleanupBase64,
+                colorsIdent: colorsIdent,
+                colorsPositive: colorsPositive,
+                colorsNegative: colorsNegative,
+                colorsInvert: invert
+            });
+        });
+    }
     clear() {
         this.map = null;
         this.teams = [];
@@ -161,6 +192,7 @@ class HotsDraftScreen extends EventEmitter {
                 return;
             }
             this.emit("detect.start");
+            this.debugDataClear();
             jimp.read(screenshotFile).then((screenshot) => {
                 // Screenshot file loaded
                 this.screenshot = screenshot;
@@ -211,17 +243,19 @@ class HotsDraftScreen extends EventEmitter {
             let mapPos = this.offsets["mapPos"];
             let mapSize = this.offsets["mapSize"];
             let mapNameImg = this.screenshot.clone().crop(mapPos.x, mapPos.y, mapSize.x, mapSize.y);
+            let mapNameImgOriginal = (this.generateDebugFiles ? mapNameImg.clone() : null);
             // Cleanup and trim map name
             if (!HotsHelpers.imageCleanupName(mapNameImg, DraftLayout["colors"]["mapName"])) {
                 reject(new Error("No map text found at the expected location!"));
                 return;
             }
             // Convert to black on white for optimal detection
-            mapNameImg.greyscale().contrast(0.4).normalize().blur(1).invert();
+            HotsHelpers.imageOcrOptimize(mapNameImg.scale(2).invert());
             if (this.generateDebugFiles) {
                 // Debug output
                 mapNameImg.write("debug/mapName.png");
             }
+            this.debugDataAdd(mapNameImgOriginal, mapNameImg, "mapName", DraftLayout["colors"]["mapName"], [], true);
             // Detect map name using tesseract
             mapNameImg.getBufferAsync(jimp.MIME_PNG).then((buffer) => {
                 worker.recognize(buffer, this.tessLangs, this.tessParams).then((result) => {
@@ -242,7 +276,7 @@ class HotsDraftScreen extends EventEmitter {
         return new Promise(async (resolve, reject) => {
             let timerPos = this.offsets["timerPos"];
             let timerSize = this.offsets["timerSize"];
-            let timerImg = this.screenshot.clone().crop(timerPos.x, timerPos.y, timerSize.x, timerSize.y).scale(0.5);
+            let timerImg = this.screenshot.clone().crop(timerPos.x, timerPos.y, timerSize.x, timerSize.y).scale(0.5, this.jimpScaleMode);
             if (this.generateDebugFiles) {
                 // Debug output
                 timerImg.write("debug/pickTimer.png");
@@ -267,7 +301,7 @@ class HotsDraftScreen extends EventEmitter {
                     let teamOffsets = this.offsets["teams"][color];
                     let posBanCheck = teamOffsets["banCheck"];
                     // Check bans
-                    let banCheckImg = this.screenshot.clone().crop(posBanCheck.x, posBanCheck.y, sizeBanCheck.x, sizeBanCheck.y).scale(0.5);
+                    let banCheckImg = this.screenshot.clone().crop(posBanCheck.x, posBanCheck.y, sizeBanCheck.x, sizeBanCheck.y).scale(0.5, this.jimpScaleMode);
                     if (this.generateDebugFiles) {
                         // Debug output
                         banCheckImg.write("debug/"+color+"_banCheck.png");
@@ -413,7 +447,7 @@ class HotsDraftScreen extends EventEmitter {
                 // Debug output
                 playerImg.write("debug/" + team.color + "_player" + index + "_Test.png");
             }
-            let playerImgNameRaw = playerImg.clone().crop(posName.x, posName.y, sizeName.x, sizeName.y).scale(4, jimp.RESIZE_BILINEAR).rotate(posName.angle, jimp.RESIZE_BEZIER);
+            let playerImgNameRaw = playerImg.clone().crop(posName.x, posName.y, sizeName.x, sizeName.y).scale(4, this.jimpScaleMode).rotate(posName.angle, this.jimpRotateMode);
             if (this.generateDebugFiles) {
                 // Debug output
                 playerImgNameRaw.write("debug/" + team.color + "_player" + index + "_NameTest.png");
@@ -421,27 +455,31 @@ class HotsDraftScreen extends EventEmitter {
             if (!player.isLocked()) {
                 // Cleanup and trim hero name
                 let heroImgName = playerImgNameRaw.clone().crop(posHeroNameRot.x, posHeroNameRot.y, sizeHeroNameRot.x, sizeHeroNameRot.y);
+                let heroImgNameOriginal = (this.generateDebugFiles ? heroImgName.clone() : null);
                 let heroVisible = false;
                 let heroLocked = false;
                 if (HotsHelpers.imageBackgroundMatch(heroImgName, DraftLayout["colors"]["heroBackgroundLocked"][colorIdent])) {
                     // Hero locked!
                     if (HotsHelpers.imageCleanupName(heroImgName, DraftLayout["colors"]["heroNameLocked"][colorIdent], [], 0x000000FF, 0xFFFFFFFF)) {
-                        heroImgName.greyscale().contrast(0.4).normalize().blur(1).scale(0.5, jimp.RESIZE_BILINEAR);
+                        HotsHelpers.imageOcrOptimize(heroImgName);
                         heroVisible = true;
                         heroLocked = true;
                     }
+                    this.debugDataAdd(heroImgNameOriginal, heroImgName, "heroNameLocked-"+colorIdent, DraftLayout["colors"]["heroNameLocked"][colorIdent], [], false);
                 } else {
                     player.setLocked(false);
                     if (team.getColor() === "blue") {
                         // Hero not locked!
                         let heroImgNameOrg = heroImgName.clone();
                         if ((colorIdent == "blue-active") && HotsHelpers.imageCleanupName(heroImgName, DraftLayout["colors"]["heroNamePrepick"][colorIdent+"-picking"])) {
-                            heroImgName.greyscale().normalize().blur(1).scale(0.5, jimp.RESIZE_BILINEAR).invert();
+                            HotsHelpers.imageOcrOptimize(heroImgName.invert());
                             heroVisible = true;
+                            this.debugDataAdd(heroImgNameOriginal, heroImgName, "heroNamePrepick-"+colorIdent+"-picking", DraftLayout["colors"]["heroNamePrepick"][colorIdent+"-picking"], [], true);
                         } else if (HotsHelpers.imageCleanupName(heroImgNameOrg, DraftLayout["colors"]["heroNamePrepick"][colorIdent])) {
                             heroImgName = heroImgNameOrg;
-                            heroImgName.greyscale().normalize().blur(1).scale(0.5, jimp.RESIZE_BILINEAR).invert();
+                            HotsHelpers.imageOcrOptimize(heroImgName.invert());
                             heroVisible = true;
+                            this.debugDataAdd(heroImgNameOriginal, heroImgName, "heroNamePrepick-"+colorIdent, DraftLayout["colors"]["heroNamePrepick"][colorIdent], [], true);
                         }
                     }
                 }
@@ -472,12 +510,14 @@ class HotsDraftScreen extends EventEmitter {
             if (player.getName() === null) {
                 // Cleanup and trim player name
                 let playerImgName = playerImgNameRaw.clone().crop(posPlayerNameRot.x, posPlayerNameRot.y, sizePlayerNameRot.x, sizePlayerNameRot.y);
+                let playerImgNameOriginal = (this.generateDebugFiles ? playerImgName.clone() : null);
                 if (!HotsHelpers.imageCleanupName(
                     playerImgName, DraftLayout["colors"]["playerName"][colorIdent], DraftLayout["colors"]["boost"]
                 )) {
                     reject(new Error("Player name not found!"));
                 }
-                playerImgName.greyscale().contrast(0.4).normalize().blur(1).scale(0.5, jimp.RESIZE_BILINEAR).invert();
+                HotsHelpers.imageOcrOptimize(playerImgName.invert());
+                this.debugDataAdd(playerImgNameOriginal, playerImgName, "playerName-"+colorIdent, DraftLayout["colors"]["playerName"][colorIdent], DraftLayout["colors"]["boost"], true);
                 if (this.generateDebugFiles) {
                     // Debug output
                     playerImgName.write("debug/" + team.color + "_player" + index + "_PlayerNameTest.png");

@@ -1,6 +1,7 @@
 const path = require('path');
-const { app, BrowserWindow } = require('electron');
+const { app, ipcMain, BrowserWindow } = require('electron');
 const Twig = require('twig');
+const fork = require('child_process').fork;
 
 if (require('electron-squirrel-startup')) return app.quit();
 
@@ -9,8 +10,6 @@ if (Installer.handleSquirrelEvent()) {
     // squirrel event handled and app will exit in 1000ms, so don't do anything else
     return;
 }
-
-const HotsDraftApp = require("./src/hots-draft-app.js");
 
 function createWindow () {
     // Erstelle das Browser-Fenster.
@@ -31,9 +30,18 @@ function createWindow () {
     // and load the index.twig.html of the app.
     win.loadFile('gui/index.html');
 
-    // initialize core app class
-    let hotsApp = new HotsDraftApp(app, win);
-    hotsApp.debug(true);
+    let backend = fork("./src/backend.js");
+    ipcMain.on("gui", (event, type, ...parameters) => {
+        if (type === "quit") {
+            backend.kill();
+            app.quit();
+            return;
+        }
+        backend.send([type, parameters]);
+    });
+    backend.on("message", function(message) {
+        win.webContents.send(...message);
+    });
 }
 
 app.on('ready', createWindow);

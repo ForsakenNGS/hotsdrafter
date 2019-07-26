@@ -4,6 +4,20 @@
         <h1>Configuration</h1>
 
         <div class="form-group row">
+            <label for="language" class="col-sm-3 col-form-label">
+                Language
+            </label>
+            <div class="col">
+                <select id="language" class="form-control">
+                {% for language in gui.gameData.languageOptions %}
+                    <option value="{{ language.id }}"{% if gui.config.language == language.id %} selected{% endif %}>
+                        {{ language.name }}
+                    </option>
+                {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-group row">
             <label for="provider" class="col-sm-3 col-form-label">
                 Draft provider
             </label>
@@ -56,6 +70,11 @@
 
         const fs = require("fs");
 
+        // Change language
+        jQuery("#language").on("change", function() {
+            let value = jQuery(this).val();
+            gui.setConfigOption("language", value);
+        });
         // Change game storage directory
         jQuery("#provider").on("change", function() {
             let value = jQuery(this).val();

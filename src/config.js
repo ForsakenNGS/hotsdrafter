@@ -14,6 +14,7 @@ class Config {
 
     constructor() {
         this.options = {
+            language: "en-us",
             provider: "heroescounters",
             gameDisplay: null,
             gameStorageDir: null,
@@ -109,6 +110,32 @@ class Config {
             }
         }
         return latestSave;
+    }
+    getTesseractLanguage() {
+        switch (this.options.language) {
+            default:
+            case "en-us":
+                return "eng";
+            case "de-de":
+                return "deu";
+            case "es-es":
+            case "es-mx":
+                return "spa";
+            case "fr-fr":
+                return "fra";
+            case "it-it":
+                return "ita";
+            case "pt-br":
+                return "por";
+            case "pl-pl":
+                return "pol";
+            case "ru-ru":
+                return "rus";
+            case "ko-kr":
+                return "kor";
+            case "zh-tw":
+                return "chi_sim";
+        }
     }
     isVisible() {
         return this.visible;

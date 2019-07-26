@@ -9,8 +9,8 @@
             </div>
             <div class="modal-body">
                 <select id="correct-hero-name" class="form-control">
-                {% for heroName in gui.gameData.heroes.name %}
-                    <option value="{{ heroName }}">{{ heroName }}</option>
+                {% for heroId, heroName in gui.gameData.heroes.name[gui.config.language] %}
+                    <option value="{{ heroId }}">{{ heroName }}</option>
                 {% endfor %}
                 </select>
             </div>
@@ -24,40 +24,47 @@
 <script>
 jQuery(function() {
 
-    // Manually correct failed detections
-    jQuery("[data-failed]").on("click", function () {
-        let heroNameFailed = jQuery(this).attr("data-failed");
-        if (heroNameFailed === "BAN") {
-            let imageData = jQuery(this).attr("src");
-            jQuery("#correct-hero-modal .btn-primary").off("click").on("click", function (e) {
-                e.preventDefault();
-                // Save correction
-                gui.saveHeroBanImage(jQuery("#correct-hero-modal select").val(), imageData);
-                // Hide modal
-                jQuery("#correct-hero-modal").modal("hide");
-                // Update app
-                gui.setModalActive(false);
+    let initCorrectionElements = function(element) {
+        // Manually correct failed detections
+        jQuery(element).find("[data-failed]").on("click", function () {
+            let heroNameFailed = jQuery(this).attr("data-failed");
+            if (heroNameFailed === "BAN") {
+                let imageData = jQuery(this).attr("src");
+                jQuery("#correct-hero-modal .btn-primary").off("click").on("click", function (e) {
+                    e.preventDefault();
+                    // Save correction
+                    gui.saveHeroBanImage(jQuery("#correct-hero-modal select").val(), imageData);
+                    // Hide modal
+                    jQuery("#correct-hero-modal").modal("hide");
+                    // Update app
+                    gui.setModalActive(false);
 
-            });
-        } else {
-            jQuery("#correct-hero-modal .btn-primary").off("click").on("click", function (e) {
-                e.preventDefault();
-                // Save correction
-                gui.saveCorrection(heroNameFailed, jQuery("#correct-hero-modal select").val());
-                // Hide modal
-                jQuery("#correct-hero-modal").modal("hide");
+                });
+            } else {
+                jQuery("#correct-hero-modal .btn-primary").off("click").on("click", function (e) {
+                    e.preventDefault();
+                    // Save correction
+                    gui.saveCorrection(heroNameFailed, jQuery("#correct-hero-modal select").val());
+                    // Hide modal
+                    jQuery("#correct-hero-modal").modal("hide");
+                    // Update app
+                    gui.setModalActive(false);
+                });
+            }
+            jQuery("#correct-hero-modal").modal("show");
+            jQuery("#correct-hero-modal").off("hidden.bs.modal").on("hidden.bs.modal", function () {
                 // Update app
                 gui.setModalActive(false);
             });
-        }
-        jQuery("#correct-hero-modal").modal("show");
-        jQuery("#correct-hero-modal").off("hidden.bs.modal").on("hidden.bs.modal", function () {
-            // Update app
-            gui.setModalActive(false);
+            // Prevent re-rendering while the modal is open
+            gui.setModalActive(true);
         });
-        // Prevent re-rendering while the modal is open
-        gui.setModalActive(true);
+    };
+
+    jQuery(document).on("player.init ban.init", function(event, element) {
+        initCorrectionElements(element);
     });
+    initCorrectionElements(document);
 
 });
 </script>

@@ -1,5 +1,4 @@
 // Nodejs dependencies
-const { ipcMain } = require('electron');
 const path = require('path');
 const request = require('request');
 const screenshot = require('screenshot-desktop');
@@ -22,16 +21,10 @@ const templates = {
 
 class HotsDraftApp extends EventEmitter {
 
-    /**
-     * @param {App} app
-     * @param {BrowserWindow} window
-     */
-    constructor(app, window) {
+    constructor() {
         super();
-        this.app = app;
-        this.window = window;
         this.debugEnabled = false;
-        this.gameData = new HotsGameData("en-us");
+        this.gameData = new HotsGameData( HotsHelpers.getConfig().getOption("language") );
         this.screen = new HotsDraftScreen(this);
         this.provider = null;
         this.displays = null;
@@ -55,9 +48,6 @@ class HotsDraftApp extends EventEmitter {
         return new Provider(this);
     }
     registerEvents() {
-        ipcMain.on("gui", (event, type, ...parameters) => {
-            this.handleEvent(event, type, parameters);
-        });
         // Bind ready event
         this.on("ready", () => {
             this.updatePage();
@@ -71,9 +61,24 @@ class HotsDraftApp extends EventEmitter {
             this.updatePage();
         })
         // Detection events
-        this.screen.on("change", () => {
+        this.screen.on("detect.teams.new", () => {
             if (this.statusDraftActive) {
                 this.sendDraftData();
+                // Register events for updating singular elements
+                let teams = this.screen.getTeams();
+                for (let t = 0; t < teams.length; t++) {
+                    let team = teams[t];
+                    team.on("ban.update", (banIndex) => {
+                        this.sendBan(team, banIndex);
+                    });
+                    let players = team.getPlayers();
+                    for (let p = 0; p < players.length; p++) {
+                        let player = players[p];
+                        players[p].on("change", () => {
+                            this.sendPlayerData(player);
+                        });
+                    }
+                }
             }
         });
         this.screen.on("detect.error", (error) => {
@@ -107,6 +112,7 @@ class HotsDraftApp extends EventEmitter {
         });
         // Download events for game data
         this.gameData.on("download.start", () => {
+            this.statusDownloadPending = true;
             this.sendEvent("gui", "download.start");
         });
         this.gameData.on("download.progress", (percent) => {
@@ -124,13 +130,24 @@ class HotsDraftApp extends EventEmitter {
             }
         });
     }
-    handleEvent(event, type, parameters) {
+    handleEvent(type, parameters) {
         switch (type) {
             case "ban.save":
                 this.screen.saveHeroBanImage(...parameters);
                 break;
             case "config.option.set":
                 HotsHelpers.getConfig().setOption(...parameters);
+                switch (parameters[0]) {
+                    case "language":
+                        this.statusDownloadPending = true;
+                        this.updateLanguage();
+                        this.updateForced();
+                        this.updatePage();
+                        break;
+                    case "provider":
+                        this.initProvider();
+                        break;
+                }
                 break;
             case "detection.pause":
                 this.statusDetectionPaused = true;
@@ -154,13 +171,10 @@ class HotsDraftApp extends EventEmitter {
                 this.sendConfig();
                 this.init();
                 break;
-            case "quit":
-                this.quit();
-                break;
         }
     }
     sendEvent(channel, type, ...parameters) {
-        this.window.webContents.send(channel, type, ...parameters);
+        process.send([channel, type, ...parameters]);
     }
     sendConfig() {
         this.sendEvent("gui", "config", HotsHelpers.getConfig().options);
@@ -170,6 +184,7 @@ class HotsDraftApp extends EventEmitter {
     }
     sendGameData() {
         this.sendEvent("gui", "gameData", {
+            languageOptions: this.gameData.languageOptions,
             heroes: this.gameData.heroes,
             maps: this.gameData.maps,
             substitutions: this.gameData.substitutions
@@ -179,6 +194,15 @@ class HotsDraftApp extends EventEmitter {
         if (this.screen.debugData.length > 1) {
             this.sendEvent("gui", "debugData", this.screen.debugData);
         }
+    }
+    sendBan(team, banIndex) {
+        this.sendEvent("gui", "ban.update", this.collectBanData(team, banIndex));
+    }
+    sendPlayerData(player) {
+        this.sendEvent("gui", "player.update", this.collectPlayerData(player));
+    }
+    sendProvider(provider) {
+        this.sendEvent("gui", "provider.update", this.collectProviderData(provider));
     }
     init() {
         this.initProvider();
@@ -191,7 +215,7 @@ class HotsDraftApp extends EventEmitter {
         this.provider.init();
         this.provider.on("change", () => {
             if (this.statusDraftActive) {
-                this.sendDraftData();
+                this.sendProvider(this.provider);
             }
         });
     }
@@ -460,10 +484,7 @@ class HotsDraftApp extends EventEmitter {
     collectDraftData() {
         let draftData = {
             map: this.screen.getMap(),
-            provider: {
-                template: this.provider.getTemplate(),
-                templateData: this.provider.getTemplateData()
-            },
+            provider: this.collectProviderData(this.provider),
             bans: [],
             players: []
         };
@@ -472,29 +493,45 @@ class HotsDraftApp extends EventEmitter {
             let team = teams[t];
             let bans = team.getBans();
             for (let i in bans) {
-                let banImage = team.getBanImageData(i);
-                draftData.bans.push({
-                    index: i,
-                    team: team.getColor(),
-                    heroName: bans[i],
-                    heroImage: (banImage !== null ? banImage.toString('base64') : null)
-                });
+                draftData.bans.push( this.collectBanData(team, i) );
             }
             for (let i in team.getPlayers()) {
                 let player = team.getPlayer(i);
-                draftData.players.push({
-                    index: i,
-                    team: team.getColor(),
-                    playerName: player.getName(),
-                    playerNameImage: player.getImagePlayerName().toString('base64'),
-                    heroName: player.getCharacter(),
-                    heroNameImage: (player.isLocked() ? player.getImageHeroName().toString('base64') : null),
-                    detectionFailed: player.isDetectionFailed(),
-                    locked: player.isLocked()
-                });
+                draftData.players.push( this.collectPlayerData(player) );
             }
         };
         return draftData;
+    }
+    collectProviderData(provider) {
+        return {
+            template: provider.getTemplate(),
+            templateData: provider.getTemplateData()
+        };
+    }
+    collectBanData(team, index) {
+        let banImage = team.getBanImageData(index);
+        return {
+            index: index,
+            team: team.getColor(),
+            heroName: team.getBanHero(index),
+            heroImage: (banImage !== null ? banImage.toString('base64') : null)
+        };
+    }
+    collectPlayerData(player) {
+        return {
+            index: player.getIndex(),
+            team: player.getTeam().getColor(),
+            playerName: player.getName(),
+            playerNameImage: player.getImagePlayerName().toString('base64'),
+            heroName: player.getCharacter(),
+            heroNameImage: (player.isLocked() ? player.getImageHeroName().toString('base64') : null),
+            detectionFailed: player.isDetectionFailed(),
+            locked: player.isLocked()
+        };
+    }
+    updateLanguage() {
+        this.screen.updateLanguage();
+        this.gameData.updateLanguage();
     }
     updateDraftData() {
         this.setDebugStep("Checking draft data...");

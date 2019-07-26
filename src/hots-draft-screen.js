@@ -23,7 +23,7 @@ class HotsDraftScreen extends EventEmitter {
         this.updateActive = false;
         this.jimpScaleMode = jimp.RESIZE_HERMITE;
         this.jimpRotateMode = jimp.RESIZE_HERMITE;
-        this.tessLangs = "eng";
+        this.tessLangs = HotsHelpers.getConfig().getTesseractLanguage();
         this.tessParams = {
             tessedit_pageseg_mode: TesseractTypes.PSM.SINGLE_LINE
         };
@@ -118,10 +118,10 @@ class HotsDraftScreen extends EventEmitter {
                     let match = file.match(/^(.+)\.png$/);
                     if (match) {
                         // Load image
-                        let heroName = match[1];
+                        let heroId = match[1];
                         loadPromises.push(
                             jimp.read(directoryPath+"/"+file).then(async (image) => {
-                                this.banImages[heroName] = image.resize(this.offsets["banSizeCompare"].x, this.offsets["banSizeCompare"].y);
+                                this.banImages[heroId] = image.resize(this.offsets["banSizeCompare"].x, this.offsets["banSizeCompare"].y);
                             })
                         );
                     }
@@ -138,13 +138,13 @@ class HotsDraftScreen extends EventEmitter {
             });
         });
     }
-    saveHeroBanImage(heroName, banImageBase64) {
-        if (!this.banImages.hasOwnProperty(heroName)) {
+    saveHeroBanImage(heroId, banImageBase64) {
+        if (!this.banImages.hasOwnProperty(heroId)) {
             let buffer = Buffer.from(banImageBase64.substr( banImageBase64.indexOf("base64,") + 7 ), 'base64');
             jimp.read(buffer).then((image) => {
-                let banHeroFile = path.join(HotsHelpers.getStorageDir(), "bans", heroName+".png");
+                let banHeroFile = path.join(HotsHelpers.getStorageDir(), "bans", heroId+".png");
                 image.write(banHeroFile);
-                this.banImages[heroName] = image;
+                this.banImages[heroId] = image.resize(this.offsets["banSizeCompare"].x, this.offsets["banSizeCompare"].y);
             });
         }
     }
@@ -206,8 +206,12 @@ class HotsDraftScreen extends EventEmitter {
                 // Detect map text (will invoke "detectTimer" on success)
                 this.emit("detect.map.start");
                 return this.detectMap();
-            }).then(() => {
+            }).then((mapName) => {
                 // Success
+                if (this.getMap() !== mapName) {
+                    this.clear();
+                    this.setMap(mapName);
+                }
                 this.emit("detect.map.success");
                 this.emit("change");
                 this.emit("detect.timer.start");
@@ -218,18 +222,20 @@ class HotsDraftScreen extends EventEmitter {
                 this.emit("change");
                 // Teams
                 this.emit("detect.teams.start");
+                return this.detectTeams();
+            }).then((teams) => {
                 if (this.teams.length === 0) {
-                    // Teams not yet detected
-                    return this.detectTeams();
+                    // Initial detection
+                    this.addTeam(teams[0]); // Team blue
+                    this.addTeam(teams[1]); // Team red
+                    this.emit("detect.teams.new");
                 } else {
-                    // Update teams
-                    return this.updateTeams();
+                    this.emit("detect.teams.update");
                 }
-            }).then((result) => {
                 this.emit("detect.teams.success");
                 this.emit("detect.success");
                 this.emit("detect.done");
-                resolve(result);
+                resolve(true);
             }).catch((error) => {
                 // Error in the detection chain
                 this.emit("detect.error", error);
@@ -261,8 +267,7 @@ class HotsDraftScreen extends EventEmitter {
                 worker.recognize(buffer, this.tessLangs, this.tessParams).then((result) => {
                     let mapName = this.app.gameData.fixMapName( result.text.trim() );
                     if ((mapName !== "") && (this.app.gameData.mapExists(mapName))) {
-                        this.setMap(mapName);
-                        resolve(true);
+                        resolve(mapName);
                     } else {
                         reject(new Error("Map name could not be detected!"));
                     }
@@ -324,53 +329,41 @@ class HotsDraftScreen extends EventEmitter {
                 this.detectTeam("blue"),
                 this.detectTeam("red")
             ];
-            Promise.all(teamDetections).then(() => {
-                resolve(true);
+            Promise.all(teamDetections).then((teams) => {
+                resolve(teams);
             }).catch((error) => {
                 reject(error);
             });
         });
     }
-    updateTeams() {
-        return new Promise(async (resolve, reject) => {
-            for (let t = 0; t < this.teams.length; t++) {
-                let team = this.teams[t];
-                let players = team.getPlayers();
-                let detections = [];
-                // Bans
-                detections.push( this.detectBans(team) );
-                // Players
-                for (let i = 0; i < players.length; i++) {
-                    let player = players[i];
-                    if (!player.isLocked()) {
-                        detections.push( this.detectPlayer(player) );
-                    }
-                }
-                Promise.all(detections).then(() => {
-                    resolve(true);
-                });
-            }
-        });
-    }
     detectTeam(color) {
         return new Promise(async (resolve, reject) => {
-            let team = new HotsDraftTeam(color);
+            let team = this.getTeam(color);
+            if (team === null) {
+                team = new HotsDraftTeam(color);
+            }
             let playerPos = this.offsets["teams"][color]["players"];
             let detections = [];
-            this.addTeam(team);
             // Bans
             detections.push( this.detectBans(team) );
             // Players
             for (let i = 0; i < playerPos.length; i++) {
-                let player = new HotsDraftPlayer(i, team);
-                detections.push( this.detectPlayer(player) );
+                detections.push( this.detectPlayer(i, team) );
             }
             Promise.all(detections).then((result) => {
                 let banResult = result.shift();
-                for (let i = 0; i < result.length; i++) {
-                    team.addPlayer(result[i]);
+                for (let i = 0; i < banResult.names.length; i++) {
+                    team.addBan(i, banResult.names[i]);
                 }
-                resolve(true);
+                for (let i = 0; i < banResult.images.length; i++) {
+                    team.addBanImageData(i, banResult.images[i]);
+                }
+                if (team.getPlayers().length === 0) {
+                    for (let i = 0; i < result.length; i++) {
+                        team.addPlayer(result[i]);
+                    }
+                }
+                resolve(team);
             });
         }).then((result) => {
             // Success
@@ -382,6 +375,8 @@ class HotsDraftScreen extends EventEmitter {
     detectBans(team) {
         return new Promise(async (resolve, reject) => {
             let teamOffsets = this.offsets["teams"][team.getColor()];
+            let bans = { names: [null, null, null], images: [null, null, null] };
+            let banImageTasks = [];
             // Get offsets
             let posBans = teamOffsets["bans"];
             let sizeBan = this.offsets["banSize"];
@@ -389,10 +384,7 @@ class HotsDraftScreen extends EventEmitter {
             for (let i = 0; i < posBans.length; i++) {
                 let posBan = posBans[i];
                 let banImg = this.screenshot.clone().crop(posBan.x, posBan.y, sizeBan.x, sizeBan.y);
-                if (HotsHelpers.imageBackgroundMatch(banImg, DraftLayout["colors"]["banBackground"])) {
-                    // No ban yet
-                    team.addBan(i, null);
-                } else {
+                if (!HotsHelpers.imageBackgroundMatch(banImg, DraftLayout["colors"]["banBackground"])) {
                     let banImgCompare = banImg.clone().resize(this.offsets["banSizeCompare"].x, this.offsets["banSizeCompare"].y);
                     if (this.generateDebugFiles) {
                         // Debug output
@@ -401,24 +393,37 @@ class HotsDraftScreen extends EventEmitter {
                     }
                     let matchBestHero = null;
                     let matchBestValue = 200;
-                    for (let heroName in this.banImages) {
-                        let heroValue = HotsHelpers.imageCompare(banImgCompare, this.banImages[heroName]);
+                    for (let heroId in this.banImages) {
+                        let heroValue = HotsHelpers.imageCompare(banImgCompare, this.banImages[heroId]);
                         if (heroValue > matchBestValue) {
-                            matchBestHero = heroName;
+                            matchBestHero = heroId;
                             matchBestValue = heroValue;
                         }
                     }
                     if (matchBestHero !== null) {
-                        team.addBan(i, matchBestHero);
+                        let heroNameTranslated = this.app.gameData.getHeroName(matchBestHero);
+                        if (bans.names[i] !== heroNameTranslated) {
+                            bans.names[i] = heroNameTranslated;
+                            team.emit("change");
+                        }
                     } else {
-                        team.addBan(i, "???");
-                        banImg.getBase64(jimp.MIME_PNG, (err, res) => {
-                            team.addBanImageData(i, res);
-                        });
+                        bans.names[i] = "???";
+                        banImageTasks.push(
+                            banImg.getBase64Async(jimp.MIME_PNG).then((result) => {
+                                bans.images[i] = result;
+                                return result;
+                            })
+                        );
                     }
                 }
             }
-            resolve(true);
+            if (banImageTasks.length === 0) {
+                resolve(bans);
+            } else {
+                Promise.all(banImageTasks).then((result) => {
+                    resolve(bans);
+                });
+            }
         }).then((result) => {
             // Success
             this.emit("detect.bans.success", team);
@@ -426,12 +431,17 @@ class HotsDraftScreen extends EventEmitter {
             return result;
         });
     }
-    detectPlayer(player) {
+    detectPlayer(index, team) {
         return new Promise(async (resolve, reject) => {
-            let index = player.getIndex();
-            let team = player.getTeam();
+            let player = team.getPlayer(index);
+            if (player === null) {
+                player = new HotsDraftPlayer(index, team);
+            }
             let teamOffsets = this.offsets["teams"][team.getColor()];
             let colorIdent = team.getColor()+( this.teamActive == team.getColor() ? "-active" : "-inactive" );
+            let pickText = DraftLayout.pickText[HotsHelpers.getConfig().getOption("language")];
+            // Text detection is more reliable when the team is not currently picking (cleaner background)
+            let playerNameFinal = (this.teamActive !== team.getColor());
             // Get offsets
             let posPlayer = teamOffsets["players"][index];
             let posName = teamOffsets["name"];
@@ -496,7 +506,7 @@ class HotsDraftScreen extends EventEmitter {
                             return worker.recognize(buffer, this.tessLangs, this.tessParams);
                         }).then((result) => {
                             let heroName = this.app.gameData.correctHeroName(result.text.trim());
-                            if (heroName !== "PICKING") {
+                            if (heroName !== pickText) {
                                 let detectionError = !this.app.gameData.heroExists(heroName);
                                 player.setCharacter(heroName, detectionError);
                                 player.setImageHeroName(imageHeroName);
@@ -507,7 +517,7 @@ class HotsDraftScreen extends EventEmitter {
                     )
                 }
             }
-            if (player.getName() === null) {
+            if (!player.isNameFinal()) {
                 // Cleanup and trim player name
                 let playerImgName = playerImgNameRaw.clone().crop(posPlayerNameRot.x, posPlayerNameRot.y, sizePlayerNameRot.x, sizePlayerNameRot.y);
                 let playerImgNameOriginal = (this.generateDebugFiles ? playerImgName.clone() : null);
@@ -531,7 +541,7 @@ class HotsDraftScreen extends EventEmitter {
                     }).then((result) => {
                         let playerName = result.text.trim();
                         console.log(playerName);
-                        player.setName(playerName);
+                        player.setName(playerName, playerNameFinal);
                         player.setImagePlayerName(imagePlayerName);
                         return playerName;
                     })
@@ -578,6 +588,9 @@ class HotsDraftScreen extends EventEmitter {
     setMap(mapName) {
         console.log(mapName);
         this.map = mapName;
+    }
+    updateLanguage() {
+        this.tessLangs = HotsHelpers.getConfig().getTesseractLanguage();
     }
 
 }

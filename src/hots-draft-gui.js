@@ -13,7 +13,9 @@ const templates = {
     "config": path.resolve(__dirname, "..", "gui", "pages", "config.twig.html"),
     "wait": path.resolve(__dirname, "..", "gui", "pages", "wait.twig.html"),
     "update": path.resolve(__dirname, "..", "gui", "pages", "update.twig.html"),
-    "detectionTuningContent": path.resolve(__dirname, "..", "gui", "elements", "detectionTuning.content.twig.html")
+    "detectionTuningContent": path.resolve(__dirname, "..", "gui", "elements", "detectionTuning.content.twig.html"),
+    "elementBan": path.resolve(__dirname, "..", "gui", "elements", "ban.twig.html"),
+    "elementPlayer": path.resolve(__dirname, "..", "gui", "elements", "player.twig.html")
 };
 
 class HotsDraftGui extends EventEmitter {
@@ -57,11 +59,21 @@ class HotsDraftGui extends EventEmitter {
                 this.draft = parameters[0];
                 this.renderPage();
                 break;
+            case "ban.update":
+                this.updateBan(...parameters);
+                break;
+            case "player.update":
+                this.updatePlayer(...parameters);
+                break;
+            case "provider.update":
+                this.updateProvider(...parameters);
+                break;
             case "game.start":
                 this.gameActive = true;
                 break;
             case "game.end":
                 this.gameActive = false;
+                this.renderPage();
                 break;
             case "gameData":
                 this.gameData = parameters[0];
@@ -117,12 +129,27 @@ class HotsDraftGui extends EventEmitter {
     getDisplays() {
         return this.displays;
     }
+    getHeroId(heroName) {
+        if (!this.gameData.heroes.name.hasOwnProperty(this.config.language)) {
+            return null;
+        }
+        for (let heroId in this.gameData.heroes.name[this.config.language]) {
+            if (this.gameData.heroes.name[this.config.language][heroId] === heroName) {
+                return heroId;
+            }
+        }
+        return null;
+    }
     getHeroImage(heroName) {
         if (!heroName) {
             return null;
         }
         heroName = this.fixHeroName(heroName);
-        return path.join(HotsHelpers.getStorageDir(), "heroes", heroName+"_crop.png");
+        let heroId = this.getHeroId(heroName);
+        if (heroId === null) {
+            return null;
+        }
+        return path.join(HotsHelpers.getStorageDir(), "heroes", heroId+"_crop.png");
     }
 
     reloadProvider() {
@@ -132,12 +159,12 @@ class HotsDraftGui extends EventEmitter {
         this.sendEvent("gui", "provider.action", ...params);
     }
 
-    saveHeroBanImage(heroName, imageData) {
-        this.sendEvent("gui", "ban.save", heroName, imageData);
+    saveHeroBanImage(heroId, imageData) {
+        this.sendEvent("gui", "ban.save", heroId, imageData);
     }
 
-    saveCorrection(heroNameFailed, heroNameFixed) {
-        this.sendEvent("gui", "hero.correct", heroNameFailed, heroNameFixed);
+    saveCorrection(heroNameFailed, heroId) {
+        this.sendEvent("gui", "hero.correct", heroNameFailed, heroId);
     }
 
     setConfigOption(name, value) {
@@ -215,6 +242,77 @@ class HotsDraftGui extends EventEmitter {
             } else {
                 jQuery(targetElement).html(html);
                 cbDone();
+            }
+        });
+    }
+
+    updateBan(banData) {
+        // Update local draft data
+        for (let i = 0; i < this.draft.players.length; i++) {
+            if ((this.draft.bans[i].team == banData.team) && (this.draft.bans[i].index == banData.index)) {
+                this.draft.bans[i] = banData;
+                break;
+            }
+        }
+        // Update gui
+        let selector = "[data-type=\"ban\"][data-team=\""+banData.team+"\"][data-index=\""+banData.index+"\"]";
+        if (jQuery(selector).length === 0) {
+            // No element available. Skip.
+            // TODO: Render the whole page in this case?
+            return;
+        }
+        Twig.renderFile(templates.elementBan, Object.assign({ gui: this }, banData), (error, html) => {
+            if (error) {
+                console.error(error);
+            } else {
+                jQuery(selector).replaceWith(html);
+                jQuery(document).trigger("ban.init", jQuery(selector));
+            }
+        });
+    }
+
+    updatePlayer(playerData) {
+        // Update local draft data
+        for (let i = 0; i < this.draft.players.length; i++) {
+            if ((this.draft.players[i].team == playerData.team) && (this.draft.players[i].index == playerData.index)) {
+                this.draft.players[i] = playerData;
+                break;
+            }
+        }
+        // Update gui
+        let selector = "[data-type=\"player\"][data-team=\""+playerData.team+"\"][data-index=\""+playerData.index+"\"]";
+        if (jQuery(selector).length === 0) {
+            // No element available. Skip.
+            // TODO: Render the whole page in this case?
+            return;
+        }
+        Twig.renderFile(templates.elementPlayer, Object.assign({ gui: this }, playerData), (error, html) => {
+            if (error) {
+                console.error(error);
+            } else {
+                jQuery(selector).replaceWith(html);
+                jQuery(document).trigger("player.init", jQuery(selector));
+            }
+        });
+    }
+
+    updateProvider(providerData) {
+        // Update local draft data
+        this.draft.provider = providerData;
+        // Update gui
+        let selector = "[data-type=\"provider\"]";
+        if (jQuery(selector).length === 0) {
+            // No element available. Skip.
+            // TODO: Render the whole page in this case?
+            return;
+        }
+        let providerTemplate = path.resolve(__dirname, "..", "gui", providerData.template);
+        Twig.renderFile(providerTemplate, Object.assign({ gui: this }, providerData.templateData), (error, html) => {
+            if (error) {
+                console.error(error);
+            } else {
+                jQuery(selector).replaceWith(html);
+                jQuery(document).trigger("provider.init", jQuery(selector));
             }
         });
     }

@@ -413,5 +413,19 @@
         "y": 371
       }
     }
+  },
+  "pickText": {
+    "en-us": "PICKING",
+    "de-de": "WÄHLT",
+    "en-gb": "PICKING",
+    "es-es": "PICKING",
+    "es-mx": "PICKING",
+    "fr-fr": "PICKING",
+    "it-it": "PICKING",
+    "pt-br": "PICKING",
+    "pl-pl": "PICKING",
+    "ru-ru": "PICKING",
+    "ko-kr": "PICKING",
+    "zh-tw": "PICKING"
   }
 }

@@ -3,7 +3,7 @@
     <div class="main-flex d-flex">
         <div class="team-blue align-self-stretch bg-info border-right border-info p-2">
             {% for player in gui.draft.players if player.team == "blue" %}
-                {% include "../elements/player.twig.html" %}
+                {% include "../elements/player.twig.html" with player %}
             {% endfor %}
         </div>
         <div class="center-area align-self-stretch bg-dark text-light flex-grow-1 p-2">
@@ -28,7 +28,7 @@
         </div>
         <div class="team-red align-self-stretch bg-danger border-left border-danger p-2">
             {% for player in gui.draft.players if player.team == "red" %}
-                {% include "../elements/player.twig.html" %}
+                {% include "../elements/player.twig.html" with player %}
             {% endfor %}
         </div>
     </div>

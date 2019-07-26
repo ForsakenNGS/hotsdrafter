@@ -1,4 +1,5 @@
-<div class="card {% if heroName != "???" %}text-dark bg-warning{% else %}text-dark bg-danger{% endif %} mx-1" data-index="{{ loop.index0 }}">
+<div class="card {% if heroName != "???" %}text-dark bg-warning{% else %}text-dark bg-danger{% endif %} mx-1" data-index="{{ index }}"
+      data-type="ban" data-team="{{ team }}" data-index="{{ index }}">
     {% if heroName is not null %}
         {% if heroName != "???" %}
             <img class="card-img-top" src="{{ gui.getHeroImage( heroName ) }}" alt="{{ heroName }}">

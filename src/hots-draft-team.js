@@ -11,16 +11,22 @@ class HotsDraftTeam extends EventEmitter {
         this.players = [];
     }
     addBan(index, hero) {
-        this.bans[index] = hero;
+        if (this.bans[index] !== hero) {
+            this.bans[index] = hero;
+            this.emit("ban.update", index);
+        }
     }
     addBanImageData(index, imageData) {
-        this.banImageData[index] = imageData;
+        if (this.banImageData[index] !== imageData) {
+            this.banImageData[index] = imageData;
+            this.emit("ban.update", index);
+        }
     }
     addPlayer(player) {
         this.players.push(player);
         let self = this;
         player.on("change", function() {
-            self.emit("player.updated", this);
+            self.emit("player.update", this);
             self.emit("change");
         });
     }
@@ -29,6 +35,9 @@ class HotsDraftTeam extends EventEmitter {
     }
     getBans() {
         return this.bans;
+    }
+    getBanHero(index) {
+        return this.bans[index];
     }
     getBanImageData(index) {
         return this.banImageData[index];

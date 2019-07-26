@@ -1,21 +1,21 @@
-<div class="card {% if player.locked %}text-white bg-dark{% else %}text-dark bg-light{% endif %} mb-3"
-     data-content="player-hero"{% if player.detectionFailed %} data-failed="{{ player.heroName }}"{% endif %}>
-    {% if player.detectionFailed %}
-        <div class="player-hero-none card-img-top">
+<div class="card {% if locked %}text-white bg-dark{% else %}text-dark bg-light{% endif %} mb-3"
+     data-content="player-hero" data-type="player" data-team="{{ team }}" data-index="{{ index }}">
+    {% if detectionFailed %}
+        <div class="player-hero-none card-img-top" data-failed="{{ heroName }}">
             <span class="fa fa-exclamation-triangle"></span>
         </div>
     {% else %}
-        {% if player.heroName %}
-            <img class="player-hero-image card-img-top" src="{{ gui.getHeroImage( player.heroName ) }}" alt="{{ player.heroName }}">
+        {% if heroName %}
+            <img class="player-hero-image card-img-top" src="{{ gui.getHeroImage( heroName ) }}" alt="{{ heroName }}">
         {% else %}
             <div class="player-hero-none card-img-top">?</div>
         {% endif %}
     {% endif %}
     <div class="card-body p-1">
         <p class="card-text text-center">
-            <b>{% if player.heroName %}{{ player.heroName }}{% else %}---{% endif %}</b>
+            <b>{% if heroName %}{{ heroName }}{% else %}---{% endif %}</b>
             <br />
-            <small>{{ player.playerName }}</small>
+            <small>{{ playerName }}</small>
         </p>
     </div>
 </div>

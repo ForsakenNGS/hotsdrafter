@@ -7,6 +7,7 @@ class HotsDraftPlayer extends EventEmitter {
         super();
         this.index = index;
         this.name = null;
+        this.nameFinal = false;
         this.team = team;
         this.character = null;
         this.detectionError = false;
@@ -38,12 +39,18 @@ class HotsDraftPlayer extends EventEmitter {
     isLocked() {
         return this.locked;
     }
-    setName(name) {
+    isNameFinal() {
+        return this.nameFinal;
+    }
+    setName(name, final) {
         if (this.name !== name) {
             let oldName = this.name;
             this.name = name;
             this.emit("name.updated", name, oldName);
             this.emit("change");
+        }
+        if (!this.nameFinal) {
+            this.nameFinal = (typeof final === "undefined" ? false : final);
         }
     }
     setTeam(team) {

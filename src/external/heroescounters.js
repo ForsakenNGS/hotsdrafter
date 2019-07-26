@@ -58,13 +58,17 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
     }
     loadUpdateData(response) {
         if (response.error) {
-            console.error("HeroesCoutners Update failed: "+response.error);
+            console.error("HeroesCounters Update failed: "+response.error);
+            this.suggestionsUrl = null;
+            if (this.updatePending) {
+                this.update();
+            }
             return;
         }
         this.suggestions = {
             friend: [],
             enemy: [],
-            tips: response.suggestions.tips
+            tips: (response.suggestions.hasOwnProperty("tips") ? response.suggestions.tips : [])
         };
         for (let id in response.suggestions.friend) {
             response.suggestions.friend[id].id = id;
@@ -87,6 +91,7 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
             case "E.T.C.":
                 name = "ETC";
         }
+        name = this.app.gameData.getHeroNameTranslation(name, "en-us");
         if (this.heroesByName.hasOwnProperty(name)) {
             return this.heroesByName[name];
         } else {
@@ -157,7 +162,7 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
                 'uri': url
             }, (error, response, body) => {
                 this.updateActive = false;
-                if (error) {
+                if (error || (typeof response === "undefined")) {
                     reject(error);
                 }
                 if (response.statusCode !== 200) {
@@ -176,9 +181,10 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
         this.updatePending = false;
         this.updateActive = true;
         // Map
+        let mapNameEn = this.app.gameData.getMapNameTranslation( this.screen.getMap(), "en-us" );
         this.activeMap = "";
-        if (this.maps.hasOwnProperty(this.screen.getMap())) {
-            this.activeMap = this.maps[this.screen.getMap()].id;
+        if (this.maps.hasOwnProperty(mapNameEn)) {
+            this.activeMap = this.maps[mapNameEn].id;
         }
         // Bans
         this.bans = [];

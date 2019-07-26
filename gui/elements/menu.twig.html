@@ -50,7 +50,11 @@
 jQuery(function() {
 
     jQuery("[data-action=\"draft\"]").on("click", function() {
-        gui.changePage("main");
+        if (gui.draft !== null) {
+            gui.changePage("main");
+        } else {
+            gui.changePage("wait");
+        }
     });
     jQuery("[data-action=\"config\"]").on("click", function() {
         gui.changePage("config");

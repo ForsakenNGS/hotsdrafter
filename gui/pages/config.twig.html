@@ -23,6 +23,9 @@
             </label>
             <div class="col">
                 <select id="provider" class="form-control">
+                    <option value="hotsdraft"{% if gui.config.provider == "hotsdraft" %} selected{% endif %}>
+                        hotsdraft.com
+                    </option>
                     <option value="heroescounters"{% if gui.config.provider == "heroescounters" %} selected{% endif %}>
                         heroescounters.com
                     </option>

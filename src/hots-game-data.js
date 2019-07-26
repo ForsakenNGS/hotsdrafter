@@ -25,7 +25,8 @@ class HotsGameData extends EventEmitter {
             name: {}
         };
         this.substitutions = {
-            "ETC": "E.T.C."
+            "ETC": "E.T.C.",
+            "LUCIO": "LÚCIO"
         };
         // Load gameData and exceptions from disk
         this.load();
@@ -123,10 +124,10 @@ class HotsGameData extends EventEmitter {
         return name;
     }
     fixHeroName(name) {
+        name = name.toUpperCase();
         if (this.substitutions.hasOwnProperty(name)) {
           name = this.substitutions[name];
         }
-        name = name.toUpperCase();
         return name;
     }
     getMapId(mapName, language) {

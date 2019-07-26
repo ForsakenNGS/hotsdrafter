@@ -16,10 +16,7 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
         this.picksRed = [];
         this.bans = [];
         this.activeMap = "";
-        this.sortField = {
-            "blue": "winrate",
-            "red": "winrate"
-        };
+        this.targetRole = "";
         this.suggestions = {};
         this.suggestionsForm = "";
         this.updateActive = false;
@@ -41,57 +38,56 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
         let self = this;
         let page = cheerio.load(response);
         // Load maps
-        page('select[name="maps"] option').each(function() {
+        page('#map option').each(function() {
             let map = page(this);
             if (map.attr("value") > 0) {
                 self.addMap( map.attr("value"), map.text() );
             }
         });
         // Load heroesByName
-        page(".teampickerlist-hero").each(function() {
+        page("#banned option").each(function() {
             let hero = page(this);
-            self.addHero(
-                hero.attr("data-hero"), hero.attr("data-heroname"),
-                hero.attr("data-role"), hero.find("img").attr("src")
-            );
+            self.addHero( hero.attr("value"), hero.text() );
         });
     }
-    loadUpdateData(response) {
-        if (response.error || (typeof response.suggestions == "undefined")) {
-            console.error("HeroesCounters Update failed: "+response.error);
+    loadPickData(response) {
+        if ((typeof response == "undefined") || !response.valid || (typeof response.scores == "undefined")) {
+            console.error("HotsDraft Update failed: "+response);
             this.suggestionsForm = null;
             if (this.updatePending) {
                 this.update();
             }
             return;
         }
-        this.suggestions = {
-            friend: [],
-            enemy: [],
-            tips: (response.suggestions.hasOwnProperty("tips") ? response.suggestions.tips : [])
-        };
-        for (let id in response.suggestions.friend) {
-            response.suggestions.friend[id].id = id;
-            this.suggestions.friend.push( response.suggestions.friend[id] );
+        // Add images
+        for (let i = 0; i < response.scores.length; i++) {
+            response.scores[i].heroImage = this.app.gameData.getHeroImage(response.scores[i].label, "en-us");
         }
-        for (let id in response.suggestions.enemy) {
-            response.suggestions.enemy[id].id = id;
-            this.suggestions.enemy.push( response.suggestions.enemy[id] );
+        // Store as result
+        this.suggestions.picks = response.scores;
+    }
+    loadBanData(response) {
+        if ((typeof response == "undefined") || !response.valid || (typeof response.scores == "undefined")) {
+            console.error("HotsDraft Update failed: "+response);
+            this.suggestionsForm = null;
+            if (this.updatePending) {
+                this.update();
+            }
+            return;
         }
-        this.sortSuggestions("blue");
-        this.sortSuggestions("red");
-        this.emit("update.done");
-        this.emit("change");
-        if (this.updatePending) {
-            this.update();
+        // Add images
+        for (let i = 0; i < response.scores.length; i++) {
+            response.scores[i].heroImage = this.app.gameData.getHeroImage(response.scores[i].label, "en-us");
         }
+        // Store as result
+        this.suggestions.bans = response.scores;
     }
     getHeroByName(name) {
-        switch (name) {
-            case "E.T.C.":
-                name = "ETC";
-        }
         name = this.app.gameData.getHeroNameTranslation(name, "en-us");
+        switch (name) {
+            case "LÚCIO":
+                name = "LUCIO";
+        }
         if (this.heroesByName.hasOwnProperty(name)) {
             return this.heroesByName[name];
         } else {
@@ -102,64 +98,39 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
         return this.heroesById[id];
     }
     getTemplate() {
-        return "external/heroescounters.twig.html";
+        return "external/hotsdraft.twig.html";
     }
     getTemplateData() {
         return {
             suggestions: this.getSuggestions(),
-            sortField: this.sortField,
-            heroesById: this.heroesById,
-            heroesByName: this.heroesByName
+            targetRole: this.targetRole
         };
     }
     getSuggestions() {
         return this.suggestions;
     }
-    getSortField(team) {
-        return this.sortField[team];
+    getTargetRole() {
+        return this.targetRole;
     }
     handleGuiAction(parameters) {
         switch (parameters.shift()) {
-            case "sortBy":
-                this.sortBy(...parameters);
+            case "setTargetRole":
+                this.setTargetRole(...parameters);
                 break;
         }
     }
-    sortBy(team, field) {
-        this.sortField[team] = field;
-        this.sortSuggestions(team);
-        this.emit("change");
-    }
-    sortSuggestions(team) {
-        let suggestionField = null;
-        switch (team) {
-            case "blue":
-                suggestionField = "friend";
-                break;
-            case "red":
-                suggestionField = "enemy";
-                break;
-            default:
-                throw new Error("Unknown team: "+team);
-                break;
-        }
-        if (this.suggestions.hasOwnProperty(suggestionField)) {
-            let sortField = this.sortField[team];
-            this.suggestions[suggestionField].sort((a, b) => {
-                return (b[sortField] - a[sortField]);
-            });
-            this.suggestions[suggestionField].map((entry, index) => {
-                entry.order = index;
-            });
-        }
+    setTargetRole(role) {
+        this.targetRole = role;
+        this.update();
     }
     init() {
         this.updateActive = true;
-        let url = "https://www.heroescounters.com/teampicker";
+        let url = "https://hotsdraft.com/draft/";
         return new Promise((resolve, reject) => {
             request({
                 'method': 'GET',
-                'uri': url
+                'uri': url,
+                'jar': true
             }, (error, response, body) => {
                 this.updateActive = false;
                 if (error || (typeof response === "undefined")) {
@@ -247,21 +218,46 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
             }
         }
         // Send request
-        let url = "https://www.heroescounters.com/teampicker/calculate"+
-            "?playerteam="+this.picksBlue.join(",")+
-            "&enemyteam="+this.picksRed.join(",")+
-            "&bans="+this.bans.join(",")+
-            "&map="+this.activeMap;
-        if (url === this.suggestionsForm) {
+        let formData = {
+            map: this.activeMap,
+            banned: this.bans,
+            allies: this.picksBlue,
+            enemies: this.picksRed,
+            league: 0,
+            role: this.targetRole
+        };
+        let formJson = JSON.stringify(formData);
+        if (formJson === this.suggestionsForm) {
             // Only update if there were actual changes
             this.updateActive = false;
             return true;
         }
-        this.suggestionsForm = url;
+        this.suggestionsForm = formJson;
+        let formDataBans = Object.assign({}, formData, { banlist: 1 });
+        let requests = [
+            this.updateRequest(formData),
+            this.updateRequest(formDataBans)
+        ];
+        return Promise.all(requests).then((result) => {
+            this.suggestions = { picks: [], bans: [] };
+            this.loadPickData(result[0]);
+            this.loadBanData(result[1]);
+            this.emit("update.done");
+            this.emit("change");
+            if (this.updatePending) {
+                return this.update();
+            } else {
+                return true;
+            }
+        });
+    }
+    updateRequest(formData) {
         return new Promise((resolve, reject) => {
             request({
-                'method': 'GET',
-                'uri': url,
+                'method': 'POST',
+                'uri': 'https://hotsdraft.com/draft/list/',
+                'form': formData,
+                'jar': true,
                 'json': true
             }, (error, response, body) => {
                 this.updateActive = false;
@@ -271,12 +267,10 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
                 if (response.statusCode !== 200) {
                     reject('Invalid status code <' + response.statusCode + '>');
                 }
-                this.loadUpdateData(body);
-                resolve(true);
+                resolve(body);
             });
         });
     }
-
 };
 
 module.exports = HeroesCountersProvider;

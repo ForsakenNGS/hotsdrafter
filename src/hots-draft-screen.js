@@ -235,6 +235,7 @@ class HotsDraftScreen extends EventEmitter {
                 this.emit("detect.teams.success");
                 this.emit("detect.success");
                 this.emit("detect.done");
+                this.emit("change");
                 resolve(true);
             }).catch((error) => {
                 // Error in the detection chain

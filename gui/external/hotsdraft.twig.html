@@ -1,0 +1,72 @@
+<div data-type="provider" class="provider-hotsdraft">
+    <div class="d-flex justify-content-center mb-3">
+        <a onclick="gui.providerAction('setTargetRole', '')" href="#" class="mx-1 badge {% if targetRole=='' %}badge-primary{% else %}badge-secondary{% endif %}">
+            <i class="fa fa-question"></i>
+            Any
+        </a>
+        <a onclick="gui.providerAction('setTargetRole', '1')" href="#" class="mx-1 badge {% if targetRole=='1' %}badge-primary{% else %}badge-secondary{% endif %}">
+            <i class="fa fa-shield-alt"></i>
+            Tank
+        </a>
+        <a onclick="gui.providerAction('setTargetRole', '2')" href="#" class="mx-1 badge {% if targetRole=='2' %}badge-primary{% else %}badge-secondary{% endif %}">
+            <i class="fa fa-fire"></i>
+            Assassin
+        </a>
+        <a onclick="gui.providerAction('setTargetRole', '3')" href="#" class="mx-1 badge {% if targetRole=='3' %}badge-primary{% else %}badge-secondary{% endif %}">
+            <i class="fa fa-medkit"></i>
+            Support
+        </a>
+        <a onclick="gui.providerAction('setTargetRole', '4')" href="#" class="mx-1 badge {% if targetRole=='4' %}badge-primary{% else %}badge-secondary{% endif %}">
+            <i class="fa fa-star-of-life"></i>
+            Specialist
+        </a>
+    </div>
+    <div class="d-flex">
+        <table class="table table-bordered table-sm table-secondary mr-3 flex-grow-1">
+            <tr>
+                <th colspan="4" class="text-center">
+                    <h4>Picks</h4>
+                </th>
+            </tr>
+            <tr>
+                <th>#</th>
+                <th>Hero</th>
+                <th>Score</th>
+                <th>Notes</th>
+            </tr>
+            {% for pick in suggestions.picks %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>
+                    <img class="hotsdraft-hero-img" src="{{ pick.heroImage }}" alt="{{ pick.label }}">
+                    {{ pick.label }}
+                </td>
+                <td>{{ pick.score }}</td>
+                <td class="notes text-nowrap">{{ pick.messages }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <table class="table table-bordered table-sm table-secondary">
+            <tr>
+                <th colspan="4" class="text-center">
+                    <h4>Bans</h4>
+                </th>
+            </tr>
+            <tr>
+                <th>#</th>
+                <th>Hero</th>
+                <th>Score</th>
+            </tr>
+            {% for ban in suggestions.bans %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>
+                    <img class="hotsdraft-hero-img" src="{{ ban.heroImage }}" alt="{{ ban.label }}">
+                    {{ ban.label }}
+                </td>
+                <td>{{ ban.score }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>

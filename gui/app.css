@@ -18,18 +18,6 @@
 .main-flex .center-area {
     overflow: auto;
 }
-.heroescounters-hero {
-    height: 80px;
-    width: 80px;
-    position: relative;
-}
-.heroescounters-hero .heroescounters-sort-value {
-    position: absolute;
-    bottom: 2px;
-    right: 0px;
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-}
 .player-hero-none {
     display: inline-block;
     min-height: 58px;
@@ -53,4 +41,31 @@
 .team-red-bans .card-img-top {
     height: 64px;
     width: auto;
+}
+
+provider-heroescounters.heroescounters-hero {
+    height: 80px;
+    width: 80px;
+    position: relative;
+}
+provider-heroescounters .heroescounters-hero .heroescounters-sort-value {
+    position: absolute;
+    bottom: 2px;
+    right: 0px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.provider-hotsdraft .bonus {
+    color: #28a745;
+}
+.provider-hotsdraft .malus {
+    color: #dc3545;
+}
+.provider-hotsdraft .hero {
+    font-weight: bold;
+}
+.provider-hotsdraft .notes {
+    font-size: 13px;
+    line-height: 14px;
 }

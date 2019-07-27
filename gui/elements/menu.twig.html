@@ -9,10 +9,16 @@
         {% endif %}
     </a>
     <ul class="navbar-nav ml-auto">
-        <li class="nav-item{% if gui.page=="main" or gui.page=="wait" or gui.page=="update" %} active{% endif %}">
+        <li class="nav-item{% if gui.page=="main" %} active{% endif %}">
             <a href="#draft" data-action="draft" class="nav-link">
                 <i class="fa fa-users"></i>
                 Draft
+            </a>
+        </li>
+        <li class="nav-item{% if gui.page=="replays" %} active{% endif %}">
+            <a href="#replays" data-action="replays" class="nav-link">
+                <i class="fa fa-users"></i>
+                Replays
             </a>
         </li>
         <li class="nav-item dropdown">
@@ -50,11 +56,10 @@
 jQuery(function() {
 
     jQuery("[data-action=\"draft\"]").on("click", function() {
-        if (gui.draft !== null) {
-            gui.changePage("main");
-        } else {
-            gui.changePage("wait");
-        }
+        gui.changePage("main");
+    });
+    jQuery("[data-action=\"replays\"]").on("click", function() {
+        gui.changePage("replays");
     });
     jQuery("[data-action=\"config\"]").on("click", function() {
         gui.changePage("config");

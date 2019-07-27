@@ -1,0 +1,19 @@
+{% if gui.gameActive %}
+    {% if gui.talents %}
+    <div class="talents">
+        {% include "../"~gui.talents.provider.template with gui.talents.provider.templateData %}
+    </div>
+    {% else %}
+    <div class="text-center p-5">
+        <h1>Match in progress...</h1>
+        <h3>Waiting until the current match is over.</h3>
+        <div class="spinner-border text-success"></div>
+    </div>
+    {% endif %}
+{% else %}
+    <div class="text-center p-5">
+        <h1>Waiting to start the draft...</h1>
+        <h3>Please wait until the draft was detected.</h3>
+        <div class="spinner-border text-success"></div>
+    </div>
+{% endif %}

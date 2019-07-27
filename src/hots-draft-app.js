@@ -15,8 +15,7 @@ const HotsHelpers = require('../src/hots-helpers.js');
 const templates = {
     "main": path.resolve(__dirname, "..", "gui", "pages", "main.twig.html"),
     "config": path.resolve(__dirname, "..", "gui", "pages", "config.twig.html"),
-    "wait": path.resolve(__dirname, "..", "gui", "pages", "wait.twig.html"),
-    "update": path.resolve(__dirname, "..", "gui", "pages", "update.twig.html")
+    "replay": path.resolve(__dirname, "..", "gui", "pages", "replay.twig.html"),
 };
 
 class HotsDraftApp extends EventEmitter {
@@ -26,41 +25,41 @@ class HotsDraftApp extends EventEmitter {
         this.debugEnabled = false;
         this.gameData = new HotsGameData( HotsHelpers.getConfig().getOption("language") );
         this.screen = new HotsDraftScreen(this);
-        this.provider = null;
+        this.draftProvider = null;
+        this.talentProvider = null;
         this.displays = null;
         // Status fields
-        this.statusDownloadPending = false;
+        this.statusGameDataPending = false;
         this.statusGameActive = false;
         this.statusGameActiveLock = null;
         this.statusGameSaveFile = { file: null, mtime: 0, updated: 0 };
         this.statusGameLastReplay = { file: null, mtime: 0, updated: 0 };
         this.statusDraftData = null;
-        this.statusUpdatePending = false;
         this.statusDraftActive = false;
-        this.statusModalActive = false;
         this.statusDetectionRunning = false;
         this.statusDetectionPaused = false;
+        this.statusUpdatePending = false;
         // Initialize
         this.registerEvents();
     }
-    createProvider() {
-        const ProviderName = HotsHelpers.getConfig().getOption("provider");
-        const Provider = require('../src/external/'+ProviderName+'.js');
-        return new Provider(this);
+    createDraftProvider() {
+        const DraftProviderName = HotsHelpers.getConfig().getOption("draftProvider");
+        const DraftProvider = require('../src/external/'+DraftProviderName+'.js');
+        return new DraftProvider(this);
+    }
+    createTalentProvider() {
+        const TalentProviderName = HotsHelpers.getConfig().getOption("talentProvider");
+        const TalentProvider = require('../src/external/'+TalentProviderName+'.js');
+        return new TalentProvider(this);
     }
     registerEvents() {
         // Bind ready event
         this.on("ready", () => {
-            this.updatePage();
             this.startDetection();
         });
         this.on("draft.started", () => {
             this.sendDraftData();
-            this.updatePage();
         });
-        this.on("draft.ended", () => {
-            this.updatePage();
-        })
         // Detection events
         this.screen.on("detect.teams.new", () => {
             if (this.statusDraftActive) {
@@ -101,19 +100,23 @@ class HotsDraftApp extends EventEmitter {
             if (this.debugEnabled) {
                 this.sendDebugData();
             }
-            let playersLocked = 0;
-            let teams = this.screen.getTeams();
-            for (let t = 0; t < teams.length; t++) {
-                let players = teams[t].getPlayers();
-                for (let p = 0; p < players.length; p++) {
-                    if (players[p].isLocked()) {
-                        playersLocked++;
+            if (!this.statusGameActive) {
+                // Trigger game start when all players locked their hero in the draft
+                let playersLocked = 0;
+                let teams = this.screen.getTeams();
+                for (let t = 0; t < teams.length; t++) {
+                    let players = teams[t].getPlayers();
+                    for (let p = 0; p < players.length; p++) {
+                        if (players[p].isLocked()) {
+                            playersLocked++;
+                        }
                     }
                 }
-            }
-            if (playersLocked === 10) {
-                this.statusGameActive = true;
-                this.statusGameActiveLock = (new Date()).getTime() + 1000 * 180;
+                if (playersLocked === 10) {
+                    this.statusGameActive = true;
+                    this.statusGameActiveLock = (new Date()).getTime() + 1000 * 180;
+                    this.triggerGameStart();
+                }
             }
         });
         this.screen.on("detect.map.start", () => {
@@ -126,22 +129,44 @@ class HotsDraftApp extends EventEmitter {
             this.setDebugStep("Detecting picks and bans...")
         });
         // Download events for game data
-        this.gameData.on("download.start", () => {
-            this.statusDownloadPending = true;
-            this.sendEvent("gui", "download.start");
+        this.gameData.on("update.start", () => {
+            this.ready = false;
+            this.sendReadyState();
+            this.statusGameDataPending = true;
+            this.sendEvent("gui", "update.start");
         });
-        this.gameData.on("download.progress", (percent) => {
-            this.sendEvent("gui", "download.progress", percent);
+        this.gameData.on("update.progress", (percent) => {
+            this.sendEvent("gui", "update.progress", percent);
         });
-        this.gameData.on("download.done", (success) => {
-            if (success) {
-                this.statusDownloadPending = false;
-                this.sendEvent("gui", "download.done");
-                this.sendGameData();
-                this.updateReadyState();
-            } else {
-                // Retry
-                this.gameData.update();
+        this.gameData.on("update.done", () => {
+            this.statusGameDataPending = false;
+            this.sendEvent("gui", "update.done");
+            this.sendGameData();
+            this.updateReadyState();
+            if (HotsHelpers.getConfig().getOption("playerName") === "") {
+                // Try to detect the player name
+                if (this.gameData.replays.details.length > 10) {
+                    let playerNames = {};
+                    let playerBestCount = 0;
+                    let playerBestName = "";
+                    for (let i = 0; i < this.gameData.replays.details.length; i++) {
+                        let replayData = this.gameData.replays.details[i];
+                        for (let p = 0; p < replayData.replayDetails.m_playerList.length; p++) {
+                            let player = replayData.replayDetails.m_playerList[p];
+                            if (!playerNames.hasOwnProperty(player.m_name)) {
+                                playerNames[player.m_name] = 1;
+                            } else {
+                                playerNames[player.m_name]++;
+                            }
+                            if (playerNames[player.m_name] > playerBestCount) {
+                                playerBestCount = playerNames[player.m_name];
+                                playerBestName = player.m_name;
+                            }
+                        }
+                    }
+                    HotsHelpers.getConfig().setOption("playerName", playerBestName);
+                    this.sendConfig();
+                }
             }
         });
     }
@@ -154,13 +179,16 @@ class HotsDraftApp extends EventEmitter {
                 HotsHelpers.getConfig().setOption(...parameters);
                 switch (parameters[0]) {
                     case "language":
-                        this.statusDownloadPending = true;
+                        this.statusGameDataPending = true;
                         this.updateLanguage();
                         this.updateForced();
                         this.updatePage();
                         break;
-                    case "provider":
-                        this.initProvider();
+                    case "draftProvider":
+                        this.initDraftProvider();
+                        break;
+                    case "talentProvider":
+                        this.initTalentProvider();
                         break;
                 }
                 break;
@@ -173,11 +201,17 @@ class HotsDraftApp extends EventEmitter {
             case "hero.correct":
                 this.gameData.addHeroCorrection(...parameters);
                 break;
-            case "provider.action":
-                this.provider.handleGuiAction(parameters);
+            case "draftProvider.action":
+                this.draftProvider.handleGuiAction(parameters);
                 break;
-            case "provider.reload":
-                this.initProvider();
+            case "draftProvider.reload":
+                this.initDraftProvider();
+                break;
+            case "talentProvider.action":
+                this.talentProvider.handleGuiAction(parameters);
+                break;
+            case "talentProvider.reload":
+                this.initTalentProvider();
                 break;
             case "update.forced":
                 this.updateForced();
@@ -197,11 +231,15 @@ class HotsDraftApp extends EventEmitter {
     sendDraftData() {
         this.sendEvent("gui", "draft", this.collectDraftData());
     }
+    sendTalentData() {
+        this.sendEvent("gui", "talents", this.collectTalentData());
+    }
     sendGameData() {
         this.sendEvent("gui", "gameData", {
             languageOptions: this.gameData.languageOptions,
             heroes: this.gameData.heroes,
             maps: this.gameData.maps,
+            replays: this.gameData.replays,
             substitutions: this.gameData.substitutions
         });
     }
@@ -216,21 +254,51 @@ class HotsDraftApp extends EventEmitter {
     sendPlayerData(player) {
         this.sendEvent("gui", "player.update", this.collectPlayerData(player));
     }
-    sendProvider(provider) {
-        this.sendEvent("gui", "provider.update", this.collectProviderData(provider));
+    sendDraftProvider(provider) {
+        this.sendEvent("gui", "draftProvider.update", this.collectProviderData(provider));
+    }
+    sendTalentProvider(provider) {
+        this.sendEvent("gui", "talentProvider.update", this.collectProviderData(provider));
+    }
+    sendReadyState() {
+        this.sendEvent("gui", "ready.status", this.ready);
+    }
+    sendDraftState() {
+        this.sendEvent("gui", "draft.status", this.statusDraftActive);
     }
     init() {
-        this.initProvider();
+        this.initDraftProvider();
+        this.initTalentProvider();
         this.downloadGameData();
         this.detectDisplays();
     }
-    initProvider() {
+    initDraftProvider() {
+        // Remove old provider
+        if (this.draftProvider !== null) {
+            this.draftProvider.off("change");
+            this.draftProvider = null;
+        }
         // Init provider
-        this.provider = this.createProvider();
-        this.provider.init();
-        this.provider.on("change", () => {
+        this.draftProvider = this.createDraftProvider();
+        this.draftProvider.init();
+        this.draftProvider.on("change", () => {
             if (this.statusDraftActive) {
-                this.sendProvider(this.provider);
+                this.sendDraftProvider(this.draftProvider);
+            }
+        });
+    }
+    initTalentProvider() {
+        // Remove old provider
+        if (this.talentProvider !== null) {
+            this.talentProvider.off("change");
+            this.talentProvider = null;
+        }
+        // Init provider
+        this.talentProvider = this.createTalentProvider();
+        this.talentProvider.init();
+        this.talentProvider.on("change", () => {
+            if (this.statusGameActive) {
+                this.sendTalentProvider(this.talentProvider);
             }
         });
     }
@@ -264,7 +332,7 @@ class HotsDraftApp extends EventEmitter {
         });
     }
     downloadGameData() {
-        this.statusDownloadPending = true;
+        this.statusGameDataPending = true;
         this.gameData.update();
     }
     setDebugStep(step) {
@@ -277,36 +345,16 @@ class HotsDraftApp extends EventEmitter {
     }
     updateReadyState() {
         if (!this.ready) {
-            if (!this.statusDownloadPending && (this.displays !== null)) {
+            if (!this.statusGameDataPending && (this.displays !== null)) {
                 this.ready = true;
                 this.emit("ready");
+                this.sendReadyState();
             }
         }
     }
     updatePage() {
-        if (this.statusModalActive) {
-            // Do not re-updatePage while a correction modal is active
-            return;
-        }
-        // Render config template?
-        let config = HotsHelpers.getConfig();
-        if (config.isVisible()) {
-            this.sendEvent("gui", "page.set", "config");
-            return;
-        }
-        // App ready?
-        if (this.ready) {
-            if (this.statusDraftActive) {
-                // Render draft screen
-                this.sendEvent("gui", "page.set", "main");
-            } else {
-                // Show wait screen while not drafting
-                this.sendEvent("gui", "page.set", "wait");
-            }
-        } else {
-            // Show update screen
-            this.sendEvent("gui", "page.set", "update");
-        }
+        // Update the gui if the main page is active
+        this.sendEvent("gui", "page.update");
     }
     quit() {
         this.app.quit();
@@ -345,9 +393,6 @@ class HotsDraftApp extends EventEmitter {
     }
     getConfig() {
         return HotsHelpers.getConfig();
-    }
-    setModalActive(active) {
-        this.statusModalActive = active;
     }
     startDetection() {
         this.update();
@@ -432,6 +477,7 @@ class HotsDraftApp extends EventEmitter {
                 // Draft just ended
                 this.statusDraftActive = false;
                 this.emit("draft.ended");
+                this.sendDraftState();
                 if (this.debugEnabled) {
                     console.log("=== DRAFT ENDED ===");
                 }
@@ -444,6 +490,7 @@ class HotsDraftApp extends EventEmitter {
                     // Draft just started
                     this.statusDraftActive = true;
                     this.emit("draft.started");
+                    this.sendDraftState();
                     if (this.debugEnabled) {
                         console.log("=== DRAFT STARTED ===");
                     }
@@ -464,46 +511,49 @@ class HotsDraftApp extends EventEmitter {
         this.checkNextUpdate();
     }
     updateGameFiles() {
-        let timeNow = (new Date()).getTime();
-        // Check save file
-        let saveUpdateAge = (timeNow - this.statusGameSaveFile.updated) / 1000;
-        if (saveUpdateAge > 10) {
-            this.statusGameSaveFile = HotsHelpers.getConfig().getLatestSaveFile();
-        }
-        let replayUpdateAge = (timeNow - this.statusGameLastReplay.updated) / 1000;
-        if (replayUpdateAge > 30) {
-            this.statusGameLastReplay =  HotsHelpers.getConfig().getLatestReplayFile();
-        }
-        // Check if game state changed
-        let gameActive = this.isGameActive();
-        if (this.statusGameActive !== gameActive) {
-            this.statusGameActive = gameActive
-            if (gameActive) {
-                // Game started
-                this.updateDraftData();
-                this.screen.clear();
-                this.emit("game.started");
-                this.sendEvent("gui", "game.start");
-                this.setDebugStep("Waiting for game to end...");
-                if (this.debugEnabled) {
-                    console.log("=== GAME STARTED ===");
-                }
-            } else {
-                // Game ended
-                this.submitReplayData();
-                this.emit("game.ended");
-                this.sendEvent("gui", "game.end");
-                if (this.debugEnabled) {
-                    console.log("=== GAME ENDED ===");
+        this.gameData.updateSaves().then(() => {
+            return this.gameData.updateReplays();
+        }).then(() => {
+            // Get updated save and replay file info
+            this.statusGameSaveFile = this.gameData.getLatestSave();
+            this.statusGameLastReplay = this.gameData.getLatestReplay();
+            // Check if game state changed
+            let gameActive = this.isGameActive();
+            if (this.statusGameActive !== gameActive) {
+                this.statusGameActive = gameActive
+                if (gameActive) {
+                    this.triggerGameStart();
+                } else {
+                    this.triggerGameEnd();
                 }
             }
-            this.updatePage();
+        });
+    }
+    triggerGameStart() {
+        // Game started
+        this.updateDraftData();
+        this.sendTalentData();
+        this.screen.clear();
+        this.emit("game.started");
+        this.sendEvent("gui", "game.start");
+        this.setDebugStep("Waiting for game to end...");
+        if (this.debugEnabled) {
+            console.log("=== GAME STARTED ===");
+        }
+    }
+    triggerGameEnd() {
+        // Game ended
+        this.submitReplayData();
+        this.emit("game.ended");
+        this.sendEvent("gui", "game.end");
+        if (this.debugEnabled) {
+            console.log("=== GAME ENDED ===");
         }
     }
     collectDraftData() {
         let draftData = {
             map: this.screen.getMap(),
-            provider: this.collectProviderData(this.provider),
+            provider: this.collectProviderData(this.draftProvider),
             bans: [],
             players: []
         };
@@ -520,6 +570,12 @@ class HotsDraftApp extends EventEmitter {
             }
         };
         return draftData;
+    }
+    collectTalentData() {
+        let talentData = {
+            provider: this.collectProviderData(this.talentProvider)
+        };
+        return talentData;
     }
     collectProviderData(provider) {
         return {
@@ -592,16 +648,6 @@ class HotsDraftApp extends EventEmitter {
                 console.error(error.stack);
             }
         });
-        /*
-        screen.detect("demo/hots-draft-2.png");
-        screen.detect("demo/hots-draft-2.png").then(() => {
-            console.log("DETECT DONE!");
-            screen.detect("demo/hots-draft-4.png").then(() => {
-                console.log("UPDATE DONE!");
-                screen.detect("demo/hots-draft-6.png");
-            });
-        });
-        */
     }
 }
 

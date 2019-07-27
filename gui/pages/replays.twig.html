@@ -1,0 +1,19 @@
+{% extends "../frame.twig.html" %}
+{% block content %}
+    <div class="container">
+        <h1>Recent Replays</h1>
+
+        <table class="table table-sm table-bordered table-striped table-dark">
+            <tr>
+                <th>Date</th>
+                <th>Map</th>
+            </tr>
+        {% for replay in gui.gameData.replays.details %}
+            <tr>
+                <td>{{ (replay.mtime / 1000)|date("Y-m-d H:i") }}</td>
+                <td>{{ replay.replayDetails.m_title }}</td>
+            </tr>
+        {% endfor %}
+        </table>
+    </div>
+{% endblock %}

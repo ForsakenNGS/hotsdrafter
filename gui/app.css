@@ -8,9 +8,24 @@
 .navbar-main-menu .navbar-brand-icon {
   height: 32px;
 }
+.content {
+    position: absolute;
+    overflow: auto;
+    left: 0;
+    right: 0;
+    top: 60px;
+    bottom: 0;
+}
+.talents {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: 0;
+}
 .main-flex {
     position: absolute;
-    top: 60px;
+    top: 0;
     left: 0;
     right: 0;
     bottom: 0;
@@ -43,12 +58,12 @@
     width: auto;
 }
 
-provider-heroescounters.heroescounters-hero {
+.provider-heroescounters .heroescounters-hero {
     height: 80px;
     width: 80px;
     position: relative;
 }
-provider-heroescounters .heroescounters-hero .heroescounters-sort-value {
+.provider-heroescounters .heroescounters-hero .heroescounters-sort-value {
     position: absolute;
     bottom: 2px;
     right: 0px;
@@ -68,4 +83,82 @@ provider-heroescounters .heroescounters-hero .heroescounters-sort-value {
 .provider-hotsdraft .notes {
     font-size: 13px;
     line-height: 14px;
+}
+
+.provider-icyveins {
+    height: 100%;
+    overflow: auto;
+}
+.provider-icyveins iframe {
+    width:100%;
+    height: 99%;
+}
+.provider-icyveins a {
+    color: inherit;
+    font-weight: bold;
+}
+.provider-icyveins .spell_icon {
+    max-height: 20px
+}
+.icyveins-hero-build-talents {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+.icyveins-hero-build-talents .heroes_build_talent_tier {
+    display: flex;
+    flex-direction: column;
+    margin: 8px;
+}
+.icyveins-hero-build-talents .heroes_build_talent_tier_subtitle {
+    text-align: center;
+}
+.icyveins-hero-build-talents .heroes_build_talent_tier_visual {
+    display: flex;
+    flex-direction: row;
+    padding: 8px;
+    justify-content: center;
+}
+.icyveins-hero-build-talents .heroes_build_talent_tier_visual .heroes_build_talent_tier_situational,
+.icyveins-hero-build-talents .heroes_build_talent_tier_visual .heroes_build_talent_tier_yes,
+.icyveins-hero-build-talents .heroes_build_talent_tier_visual .heroes_build_talent_tier_no {
+    width: 8px;
+    height: 8px;
+    margin: 2px;
+    border-radius: 2px;
+    align-self: flex-end;
+}
+.icyveins-hero-build-talents .heroes_build_talent_tier_visual .heroes_build_talent_tier_situational {
+    background-color: #ffb100;
+}
+.icyveins-hero-build-talents .heroes_build_talent_tier_visual .heroes_build_talent_tier_yes {
+    background-color: #00ff00;
+    width: 12px;
+    height: 12px;
+    align-self: flex-start;
+}
+.icyveins-hero-build-talents .heroes_build_talent_tier_visual .heroes_build_talent_tier_no {
+    background-color: rgba(0, 0, 0, 0.75);
+}
+.icyveins-hero-build-talents .heroes_build_talent_tier > .heroes_build_talent_tier_recommended img {
+    width: 64px;
+    margin-bottom: 8px;
+    align-self: center;
+}
+.icyveins-hero-build-talents .heroes_build_talent_tier > .heroes_build_talent_tier_situational {
+    position: relative;
+    align-self: center;
+}
+.icyveins-hero-build-talents .heroes_build_talent_tier > .heroes_build_talent_tier_situational img {
+    width: 40px;
+}
+.icyveins-hero-build-talents .heroes_build_talent_tier > .heroes_build_talent_tier_situational .talent_marker.talent_marker_maybe {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    color: rgba(0, 0, 0, 0.6);
+    font-size: 40px;
+    font-weight: bold;
+    margin-left: -10px;
+    margin-top: -30px;
 }

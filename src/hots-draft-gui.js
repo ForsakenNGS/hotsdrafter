@@ -11,8 +11,7 @@ const HotsHelpers = require('./hots-helpers.js');
 const templates = {
     "main": path.resolve(__dirname, "..", "gui", "pages", "main.twig.html"),
     "config": path.resolve(__dirname, "..", "gui", "pages", "config.twig.html"),
-    "wait": path.resolve(__dirname, "..", "gui", "pages", "wait.twig.html"),
-    "update": path.resolve(__dirname, "..", "gui", "pages", "update.twig.html"),
+    "replays": path.resolve(__dirname, "..", "gui", "pages", "replays.twig.html"),
     "detectionTuningContent": path.resolve(__dirname, "..", "gui", "elements", "detectionTuning.content.twig.html"),
     "elementBan": path.resolve(__dirname, "..", "gui", "elements", "ban.twig.html"),
     "elementPlayer": path.resolve(__dirname, "..", "gui", "elements", "player.twig.html")
@@ -27,10 +26,11 @@ class HotsDraftGui extends EventEmitter {
         this.document = window.document;
         this.window = window;
         // GUI relevant fields
-        this.page = "update";
+        this.page = "main";
         this.config = null;
         this.displays = null;
         this.draft = null;
+        this.talents = null;
         this.gameActive = false;
         this.gameData = null;
         this.debugData = [];
@@ -57,7 +57,15 @@ class HotsDraftGui extends EventEmitter {
                 break;
             case "draft":
                 this.draft = parameters[0];
-                this.renderPage();
+                this.refreshPage();
+                break;
+            case "draft.status":
+                this.draftActive = parameters[0];
+                this.refreshPage();
+                break;
+            case "talents":
+                this.talents = parameters[0];
+                this.refreshPage();
                 break;
             case "ban.update":
                 this.updateBan(...parameters);
@@ -65,15 +73,18 @@ class HotsDraftGui extends EventEmitter {
             case "player.update":
                 this.updatePlayer(...parameters);
                 break;
-            case "provider.update":
-                this.updateProvider(...parameters);
+            case "draftProvider.update":
+                this.updateDraftProvider(...parameters);
+                break;
+            case "talentProvider.update":
+                this.updateTalentProvider(...parameters);
                 break;
             case "game.start":
                 this.gameActive = true;
                 break;
             case "game.end":
                 this.gameActive = false;
-                this.renderPage();
+                this.refreshPage();
                 break;
             case "gameData":
                 this.gameData = parameters[0];
@@ -87,17 +98,21 @@ class HotsDraftGui extends EventEmitter {
             case "displays.detected":
                 this.setDisplays(parameters[0]);
                 break;
-            case "download.start":
+            case "ready.status":
+                this.ready = parameters[0];
+                this.refreshPage();
+                break;
+            case "update.start":
                 this.setUpdateProgress(0);
                 break;
-            case "download.progress":
+            case "update.progress":
                 this.setUpdateProgress(parameters[0]);
                 break;
-            case "download.done":
+            case "update.done":
                 this.setUpdateProgress(100);
                 break;
-            case "page.set":
-                this.changePage(parameters[0]);
+            case "page.update":
+                this.refreshPage();
                 break;
             case "update.progress":
                 this.setUpdateProgress(parameters[0]);
@@ -152,11 +167,11 @@ class HotsDraftGui extends EventEmitter {
         return path.join(HotsHelpers.getStorageDir(), "heroes", heroId+"_crop.png");
     }
 
-    reloadProvider() {
-        this.sendEvent("gui", "provider.reload");
+    reloadDraftProvider() {
+        this.sendEvent("gui", "draftProvider.reload");
     }
-    providerAction(...params) {
-        this.sendEvent("gui", "provider.action", ...params);
+    draftProviderAction(...params) {
+        this.sendEvent("gui", "draftProvider.action", ...params);
     }
 
     saveHeroBanImage(heroId, imageData) {
@@ -186,7 +201,7 @@ class HotsDraftGui extends EventEmitter {
         this.modalActive = modalActive;
         if (!modalActive) {
             // Re-render page after closing a modal
-            this.renderPage();
+            this.refreshPage();
         }
     }
     setUpdateProgress(percent) {
@@ -219,6 +234,12 @@ class HotsDraftGui extends EventEmitter {
                 jQuery(".page").html(html);
             }
         });
+    }
+    refreshPage() {
+        if (this.modalActive || (this.page !== "main")) {
+            return;
+        }
+        this.renderPage();
     }
 
     renderDetectionTunerContent(targetElement, cbDone) {
@@ -296,11 +317,11 @@ class HotsDraftGui extends EventEmitter {
         });
     }
 
-    updateProvider(providerData) {
+    updateDraftProvider(providerData) {
         // Update local draft data
         this.draft.provider = providerData;
         // Update gui
-        let selector = "[data-type=\"provider\"]";
+        let selector = "[data-type=\"draft-provider\"]";
         if (jQuery(selector).length === 0) {
             // No element available. Skip.
             // TODO: Render the whole page in this case?
@@ -312,7 +333,28 @@ class HotsDraftGui extends EventEmitter {
                 console.error(error);
             } else {
                 jQuery(selector).replaceWith(html);
-                jQuery(document).trigger("provider.init", jQuery(selector));
+                jQuery(document).trigger("draftProvider.init", jQuery(selector));
+            }
+        });
+    }
+
+    updateTalentProvider(providerData) {
+        // Update local draft data
+        this.talents.provider = providerData;
+        // Update gui
+        let selector = "[data-type=\"talent-provider\"]";
+        if (jQuery(selector).length === 0) {
+            // No element available. Skip.
+            // TODO: Render the whole page in this case?
+            return;
+        }
+        let providerTemplate = path.resolve(__dirname, "..", "gui", providerData.template);
+        Twig.renderFile(providerTemplate, Object.assign({ gui: this }, providerData.templateData), (error, html) => {
+            if (error) {
+                console.error(error);
+            } else {
+                jQuery(selector).replaceWith(html);
+                jQuery(document).trigger("talentProvider.init", jQuery(selector));
             }
         });
     }

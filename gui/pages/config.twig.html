@@ -18,16 +18,28 @@
             </div>
         </div>
         <div class="form-group row">
-            <label for="provider" class="col-sm-3 col-form-label">
+            <label for="draftProvider" class="col-sm-3 col-form-label">
                 Draft provider
             </label>
             <div class="col">
-                <select id="provider" class="form-control">
-                    <option value="hotsdraft"{% if gui.config.provider == "hotsdraft" %} selected{% endif %}>
+                <select id="draftProvider" class="form-control">
+                    <option value="hotsdraft"{% if gui.config.draftProvider == "hotsdraft" %} selected{% endif %}>
                         hotsdraft.com
                     </option>
-                    <option value="heroescounters"{% if gui.config.provider == "heroescounters" %} selected{% endif %}>
+                    <option value="heroescounters"{% if gui.config.draftProvider == "heroescounters" %} selected{% endif %}>
                         heroescounters.com
+                    </option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group row">
+            <label for="draftProvider" class="col-sm-3 col-form-label">
+                Talent provider
+            </label>
+            <div class="col">
+                <select id="draftProvider" class="form-control">
+                    <option value="icyveins"{% if gui.config.talentProvider == "icyveins" %} selected{% endif %}>
+                        icy-veins.com
                     </option>
                 </select>
             </div>
@@ -44,6 +56,14 @@
                         </option>
                     {% endfor %}
                 </select>
+            </div>
+        </div>
+        <div class="form-group row">
+            <label for="playerName" class="col-sm-3 col-form-label">
+                Your player name
+            </label>
+            <div class="col">
+                <input type="text" class="form-control" id="playerName" value="{{ gui.config.playerName }}" >
             </div>
         </div>
         <div class="form-group row">
@@ -78,10 +98,15 @@
             let value = jQuery(this).val();
             gui.setConfigOption("language", value);
         });
-        // Change game storage directory
-        jQuery("#provider").on("change", function() {
+        // Change draft provider
+        jQuery("#draftProvider").on("change", function() {
             let value = jQuery(this).val();
-            gui.setConfigOption("provider", value);
+            gui.setConfigOption("draftProvider", value);
+        });
+        // Change talent provider
+        jQuery("#talentProvider").on("change", function() {
+            let value = jQuery(this).val();
+            gui.setConfigOption("talentProvider", value);
         });
         // Change game storage directory
         jQuery("#gameDisplay").on("change", function() {
@@ -97,6 +122,11 @@
             } else {
                 jQuery(this).addClass("is-invalid").removeClass("is-valid");
             }
+        });
+        // Change own player name (for talent suggestions)
+        jQuery("#playerName").on("change keyup", function() {
+            let value = jQuery(this).val();
+            gui.setConfigOption("playerName", value);
         });
         // Enable or disable submission of training data
         jQuery("#gameImproveDetection").on("change", function() {

@@ -15,7 +15,9 @@ class Config {
     constructor() {
         this.options = {
             language: "en-us",
-            provider: "heroescounters",
+            draftProvider: "heroescounters",
+            talentProvider: "icyveins",
+            playerName: "",
             gameDisplay: null,
             gameStorageDir: null,
             gameImproveDetection: true
@@ -65,52 +67,6 @@ class Config {
         });
         return players;
     }
-    getLatestReplayFile() {
-        let latestReplay = {
-            file: null, mtime: 0, updated: (new Date()).getTime()
-        };
-        let accounts = this.getAccounts();
-        for (let a = 0; a < accounts.length; a++) {
-            for (let p = 0; p < accounts[a].players.length; p++) {
-                let replayPath = path.join(this.options.gameStorageDir, "Accounts", accounts[a].id, accounts[a].players[p], "Replays", "Multiplayer");
-                let files = fs.readdirSync(replayPath);
-                files.forEach((file) => {
-                    if (file.match(/\.StormReplay$/)) {
-                        let fileAbsolute = path.join(replayPath, file);
-                        let fileStats = fs.statSync(path.join(replayPath, file));
-                        if (latestReplay.mtime < fileStats.mtimeMs) {
-                            latestReplay.file = fileAbsolute;
-                            latestReplay.mtime = fileStats.mtimeMs;
-                        }
-                    }
-                });
-            }
-        }
-        return latestReplay;
-    }
-    getLatestSaveFile() {
-        let latestSave = {
-            file: null, mtime: 0, updated: (new Date()).getTime()
-        };
-        let accounts = this.getAccounts();
-        for (let a = 0; a < accounts.length; a++) {
-            for (let p = 0; p < accounts[a].players.length; p++) {
-                let replayPath = path.join(this.options.gameStorageDir, "Accounts", accounts[a].id, accounts[a].players[p], "Saves", "Rejoin");
-                let files = fs.readdirSync(replayPath);
-                files.forEach((file) => {
-                    if (file.match(/\.StormSave$/)) {
-                        let fileAbsolute = path.join(replayPath, file);
-                        let fileStats = fs.statSync(path.join(replayPath, file));
-                        if (latestSave.mtime < fileStats.mtimeMs) {
-                            latestSave.file = fileAbsolute;
-                            latestSave.mtime = fileStats.mtimeMs;
-                        }
-                    }
-                });
-            }
-        }
-        return latestSave;
-    }
     getTesseractLanguage() {
         switch (this.options.language) {
             default:
@@ -136,9 +92,6 @@ class Config {
             case "zh-tw":
                 return "chi_sim";
         }
-    }
-    isVisible() {
-        return this.visible;
     }
     setOption(name, value) {
         this.options[name] = value;
@@ -180,12 +133,6 @@ class Config {
         // Write specific type into cache
         let configFile = this.getFile();
         fs.writeFileSync( configFile, JSON.stringify(this.options) );
-    }
-    show() {
-        this.visible = true;
-    }
-    hide() {
-        this.visible = false;
     }
     render(container, jQuery) {
         // Render update template?

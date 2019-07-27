@@ -1,0 +1,34 @@
+<div class="main-flex d-flex">
+    <div class="team-blue align-self-stretch bg-info border-right border-info p-2">
+        {% for player in gui.draft.players if player.team == "blue" %}
+            {% include "../elements/player.twig.html" with player %}
+        {% endfor %}
+    </div>
+    <div class="center-area align-self-stretch bg-dark text-light flex-grow-1 p-2">
+        <div class="d-flex">
+            <div class="team-blue-bans d-flex text-left">
+            {% for ban in gui.draft.bans if ban.team == "blue" %}
+                {% include "../elements/ban.twig.html" with ban %}
+            {% endfor %}
+            </div>
+            <div class="flex-grow-1 text-center">
+                <h3 data-content="map-name">{{ gui.draft.map }}</h3>
+            </div>
+            <div class="team-red-bans d-flex text-right">
+            {% for ban in gui.draft.bans if ban.team == "red" %}
+                {% include "../elements/ban.twig.html" with ban %}
+            {% endfor %}
+            </div>
+        </div>
+        <div class="suggestions mt-2">
+            {% include "../"~gui.draft.provider.template with gui.draft.provider.templateData %}
+        </div>
+    </div>
+    <div class="team-red align-self-stretch bg-danger border-left border-danger p-2">
+        {% for player in gui.draft.players if player.team == "red" %}
+            {% include "../elements/player.twig.html" with player %}
+        {% endfor %}
+    </div>
+</div>
+{% include "../elements/correction.twig.html" %}
+{% include "../elements/detectionTuning.twig.html" %}

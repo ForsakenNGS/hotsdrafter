@@ -8,6 +8,7 @@ const jimp = require('jimp');
 const EventEmitter = require('events');
 
 // Local classes
+const HotsReplay = require('hots-replay');
 const HotsHelpers = require('./hots-helpers.js');
 
 class HotsGameData extends EventEmitter {
@@ -27,6 +28,22 @@ class HotsGameData extends EventEmitter {
         this.substitutions = {
             "ETC": "E.T.C.",
             "LUCIO": "LÚCIO"
+        };
+        this.replays = {
+            details: [],
+            fileNames: [],
+            latestReplay: { file: null, mtime: 0 },
+            lastUpdate: 0
+        };
+        this.saves = {
+            latestSave: { file: null, mtime: 0 },
+            lastUpdate: 0
+        };
+        this.updateProgress = {
+            tasksPending: 0,
+            tasksDone: 0,
+            tasksFailed: 0,
+            retries: 0
         };
         // Load gameData and exceptions from disk
         this.load();
@@ -228,6 +245,12 @@ class HotsGameData extends EventEmitter {
     getFile() {
         return path.join(HotsHelpers.getStorageDir(), "gameData.json");
     }
+    getLatestReplay() {
+        return this.replays.latestReplay;
+    }
+    getLatestSave() {
+        return this.saves.latestSave;
+    }
     load() {
         let storageFile = this.getFile();
         // Read the data from file
@@ -238,10 +261,11 @@ class HotsGameData extends EventEmitter {
         let cacheContent = fs.readFileSync(storageFile);
         try {
             let cacheData = JSON.parse(cacheContent.toString());
-            if (cacheData.formatVersion == 2) {
+            if (cacheData.formatVersion == 3) {
                 this.languageOptions = cacheData.languageOptions;
                 this.maps = cacheData.maps;
                 this.heroes = cacheData.heroes;
+                this.replays = cacheData.replays;
             }
         } catch (e) {
             console.error("Failed to read gameData data!");
@@ -273,24 +297,55 @@ class HotsGameData extends EventEmitter {
         // Write specific type into cache
         let storageFile = this.getFile();
         fs.writeFileSync( storageFile, JSON.stringify({
-            formatVersion: 2,
+            formatVersion: 3,
             languageOptions: this.languageOptions,
             maps: this.maps,
-            heroes: this.heroes
+            heroes: this.heroes,
+            replays: this.replays
         }) );
     }
     update() {
-        let updatePromises = [
-          this.updateMaps("en-us"),
-          this.updateHeroes("en-us")
-        ];
-        if (this.language !== "en-us") {
-            updatePromises.push( this.updateMaps(this.language) );
-            updatePromises.push( this.updateHeroes(this.language) );
-        }
-        return Promise.all(updatePromises);
+        this.progressReset();
+        this.progressTaskNew();
+        return new Promise((resolve, reject) => {
+            let updatePromises = [
+              this.updateReplays(),
+              this.updateSaves(),
+              this.updateMaps("en-us"),
+              this.updateHeroes("en-us")
+            ];
+            if (this.language !== "en-us") {
+                updatePromises.push( this.updateMaps(this.language) );
+                updatePromises.push( this.updateHeroes(this.language) );
+            }
+            Promise.all(updatePromises).then((result) => {
+                resolve(result);
+            }).catch((error) => {
+                if (this.updateProgress.retries++ < 3) {
+                    // Retry
+                    this.update().then((result) => {
+                        resolve(result)
+                    }).catch((error) => {
+                        reject(error);
+                    });
+                } else {
+                    reject(error);
+                }
+            }).finally(() => {
+                this.emit("update.done");
+            });
+        }).then((result) => {
+            this.progressTaskDone();
+            return result;
+        }).catch((error) => {
+            this.progressTaskFailed();
+            throw error;
+        }).finally(() => {
+            this.emit("update.done");
+        });
     }
     updateMaps(language) {
+        this.progressTaskNew();
         let url = "https://heroesofthestorm.com/"+language+"/battlegrounds/";
         return new Promise((resolve, reject) => {
             request({
@@ -315,6 +370,12 @@ class HotsGameData extends EventEmitter {
                     reject(error);
                 });
             });
+        }).then((result) => {
+            this.progressTaskDone();
+            return result;
+        }).catch((error) => {
+            this.progressTaskFailed();
+            throw error;
         });
     }
     updateMapsFromResponse(language, content) {
@@ -338,6 +399,7 @@ class HotsGameData extends EventEmitter {
         });
     }
     updateHeroes(language) {
+        this.progressTaskNew();
         let url = "https://heroesofthestorm.com/"+language+"/heroes/";
         return new Promise((resolve, reject) => {
             request({
@@ -362,6 +424,12 @@ class HotsGameData extends EventEmitter {
                     reject(error);
                 });
             });
+        }).then((result) => {
+            this.progressTaskDone();
+            return result;
+        }).catch((error) => {
+            this.progressTaskFailed();
+            throw error;
         });
     }
     updateHeroesFromResponse(language, content) {
@@ -371,8 +439,6 @@ class HotsGameData extends EventEmitter {
             // Load heroesByName
             const heroDataVar = "window.blizzard.hgs.heroData";
             let downloads = [];
-            let downloadsDone = 0;
-            let downloadsFailed = 0;
             page("script").each(function() {
                 let script = page(this).html();
                 if (script.indexOf(heroDataVar) === 0) {
@@ -387,12 +453,12 @@ class HotsGameData extends EventEmitter {
                         self.addHero(heroId, heroName, language);
                         self.addHeroDetails(heroId, hero, language);
                         if (language === "en-us") {
+                            self.progressTaskNew();
                             let downloadPromise = self.downloadHeroIcon(heroId, heroImageUrl);
                             downloadPromise.then(() => {
-                                downloadsDone++;
-                                self.emit("download.progress", Math.round(downloadsDone * 100 / downloads.length));
+                                self.progressTaskDone();
                             }).catch((error) => {
-                                downloadsFailed++;
+                                self.progressTaskFailed();
                             });
                             downloads.push(downloadPromise);
                         }
@@ -400,13 +466,10 @@ class HotsGameData extends EventEmitter {
                 }
             });
             if (downloads.length > 0) {
-                this.emit("download.start");
-                Promise.all(downloads).catch((error) => {
-                    reject(error);
-                }).then(() => {
+                Promise.all(downloads).then(() => {
                     resolve(true);
-                }).finally(() => {
-                    this.emit("download.done", (downloadsFailed === 0));
+                }).catch((error) => {
+                    reject(error);
                 });
             } else {
                 // No downloads pending, done!
@@ -419,7 +482,157 @@ class HotsGameData extends EventEmitter {
         this.language = HotsHelpers.getConfig().getOption("language");
         this.update();
     }
+    updateReplays() {
+        this.progressTaskNew();
+        return new Promise((resolve, reject) => {
+            // Do not update replays more often than every 30 seconds
+            let replayUpdateAge = ((new Date()).getTime() - this.replays.lastUpdate) / 1000;
+            if (replayUpdateAge < 30) {
+                resolve(true);
+                return;
+            }
+            // Update replays
+            let accounts = HotsHelpers.getConfig().getAccounts();
+            let gameStorageDir = HotsHelpers.getConfig().getOption("gameStorageDir");
+            let replayTasks = [];
+            for (let a = 0; a < accounts.length; a++) {
+                for (let p = 0; p < accounts[a].players.length; p++) {
+                    let replayPath = path.join(gameStorageDir, "Accounts", accounts[a].id, accounts[a].players[p], "Replays", "Multiplayer");
+                    let files = fs.readdirSync(replayPath);
+                    files.forEach((file) => {
+                        if (file.match(/\.StormReplay$/)) {
+                            let fileAbsolute = path.join(replayPath, file);
+                            if (this.replays.fileNames.indexOf(fileAbsolute) === -1) {
+                                // New replay detected
+                                replayTasks.push( this.addReplay(fileAbsolute) );
+                            }
+                        }
+                    });
+                }
+            }
+            this.replays.lastUpdate = (new Date()).getTime();
+            if (replayTasks.length === 0) {
+                resolve(true);
+            } else {
+                Promise.all(replayTasks).then((replays) => {
+                    // Sort replays (newest first)
+                    this.replays.details.sort((a, b) => {
+                        return b.mtime - a.mtime;
+                    });
+                    // Only sore the details for the latest 100 replays
+                    if (this.replays.details.length > 100) {
+                        this.replays.details.splice(100);
+                    }
+                    // Update done!
+                    resolve(true);
+                }).catch((error) => {
+                    reject(error);
+                });
+            }
+        }).then((result) => {
+            this.progressTaskDone();
+            return result;
+        }).catch((error) => {
+            this.progressTaskFailed();
+            throw error;
+        });
+    }
+    updateSaves() {
+        this.progressTaskNew();
+        return new Promise((resolve, reject) => {
+            // Do not update saves more often than every 10 seconds
+            let replayUpdateAge = ((new Date()).getTime() - this.saves.lastUpdate) / 1000;
+            if (replayUpdateAge < 10) {
+                resolve(true);
+                return;
+            }
+            // Update saves
+            let accounts = HotsHelpers.getConfig().getAccounts();
+            let gameStorageDir = HotsHelpers.getConfig().getOption("gameStorageDir");
+            for (let a = 0; a < accounts.length; a++) {
+                for (let p = 0; p < accounts[a].players.length; p++) {
+                    let replayPath = path.join(gameStorageDir, "Accounts", accounts[a].id, accounts[a].players[p], "Saves", "Rejoin");
+                    let files = fs.readdirSync(replayPath);
+                    files.forEach((file) => {
+                        if (file.match(/\.StormSave$/)) {
+                            let fileAbsolute = path.join(replayPath, file);
+                            let fileStats = fs.statSync(path.join(replayPath, file));
+                            if (this.saves.latestSave.mtime < fileStats.mtimeMs) {
+                                this.saves.latestSave.file = fileAbsolute;
+                                this.saves.latestSave.mtime = fileStats.mtimeMs;
+                            }
+                        }
+                    });
+                }
+            }
+            this.saves.lastUpdate = (new Date()).getTime();
+            resolve(true);
+        }).then((result) => {
+            this.progressTaskDone();
+            return result;
+        }).catch((error) => {
+            this.progressTaskFailed();
+            throw error;
+        });
+    }
+    progressReset() {
+        this.updateProgress.tasksPending = 1;
+        this.updateProgress.tasksDone = 0;
+        this.updateProgress.tasksFailed = 0;
+        this.progressRefresh();
+    }
+    progressTaskNew() {
+        this.updateProgress.tasksPending++;
+        this.progressRefresh();
+    }
+    progressTaskDone() {
+        this.updateProgress.tasksDone++;
+        this.progressRefresh();
+    }
+    progressTaskFailed() {
+        this.updateProgress.tasksFailed++;
+        this.progressRefresh();
+    }
+    progressRefresh() {
+        this.emit("update.progress", Math.round(this.updateProgress.tasksDone * 100 / this.updateProgress.tasksPending));
+    }
 
+    addReplay(replayFile) {
+        return new Promise((resolve, reject) => {
+            this.progressTaskNew();
+            this.loadReplay(replayFile).then((replayData) => {
+                this.replays.fileNames.push(replayFile);
+                if (replayData !== null) {
+                    this.replays.details.push(replayData);
+                    if (this.replays.latestReplay.mtime < replayData.mtime) {
+                        this.replays.latestReplay = replayData;
+                    }
+                }
+                this.progressTaskDone();
+                resolve(replayData);
+            }).catch((error) => {
+                this.progressTaskFailed();
+                reject(error);
+            });
+        });
+    }
+
+    loadReplay(replayFile) {
+        return new Promise((resolve, reject) => {
+            try {
+                let fileStats = fs.statSync(replayFile);
+                let replay = new HotsReplay(replayFile);
+                let replayData = {
+                    file: replayFile,
+                    mtime: fileStats.mtimeMs,
+                    replayDetails: replay.getReplayDetails()
+                };
+                resolve(replayData);
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
 }
 
 module.exports = HotsGameData;

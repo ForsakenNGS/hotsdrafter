@@ -1,0 +1,79 @@
+<div class="container">
+    <h2 class="text-center">{{ talents.name }} - Builds and Tips</h2>
+
+    {% if (talents.parsed.strengths is not empty) or (talents.parsed.weaknesses is not empty) %}
+    <div class="row icyveins-hero-strengths-and-weaknesses mb-3">
+        <div class="col d-flex">
+            <div class="bg-success flex-fill align-self-stretch p-3">
+                <h4>Strengths</h4>
+                <ul class="mb-0">
+                {% for strength in talents.parsed.strengths %}
+                    <li class="icyveins-hero-strength">
+                        {{ strength|raw }}
+                    </li>
+                {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div class="col d-flex">
+            <div class="bg-danger flex-fill align-self-stretch p-3">
+                <h4>Weaknesses</h4>
+                <ul class="mb-0">
+                {% for weakness in talents.parsed.weaknesses %}
+                    <li class="icyveins-hero-weakness">
+                        {{ weakness|raw }}
+                    </li>
+                {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if talents.parsed.talentCheatsheet is not empty %}
+    <div class="icyveins-hero-builds mb-3">
+        <ul class="nav nav-tabs" id="icyveins-hero-builds" role="tablist">
+        {% for build in talents.parsed.talentCheatsheet %}
+            <a class="nav-link{% if loop.first %} active{% endif %}" id="icyveins-hero-build-{{ loop.index }}-tab" role="tab"{% if loop.first %} aria-selected="true"{% endif %}
+               data-toggle="tab" href="#icyveins-hero-build-{{ loop.index }}-content" aria-controls="icyveins-hero-build-{{ loop.index }}-content">
+                {{ build.name }}
+            </a>
+        {% endfor %}
+        </ul>
+        <div class="tab-content">
+        {% for build in talents.parsed.talentCheatsheet %}
+            <div class="tab-pane bg-light text-dark fade{% if loop.first %} show active{% endif %}" id="icyveins-hero-build-{{ loop.index }}-content"
+                 role="tabpanel" aria-labelledby="icyveins-hero-build-{{ loop.index }}-tab">
+                <div class="icyveins-hero-build-talents">
+                    {{ build.talents|raw }}
+                </div>
+                <div class="icyveins-hero-build-description mx-4 mt-1 pb-1">
+                    {{ build.description|raw }}
+                </div>
+            </div>
+        {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if talents.parsed.tips is not empty %}
+    <div class="icyveins-hero-tips bg-secondary text-light p-3 mb-3">
+        <h4>Tips</h4>
+        <ul class="mb-0">
+        {% for tip in talents.parsed.tips %}
+            <li class="icyveins-hero-tip">
+                {{ tip|raw }}
+            </li>
+        {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+<script type="text/javascript">
+jQuery(function() {
+    jQuery("#icyveins-hero-builds a").on("click", function(e) {
+        e.preventDefault();
+        jQuery(this).tab('show');
+    });
+});
+</script>

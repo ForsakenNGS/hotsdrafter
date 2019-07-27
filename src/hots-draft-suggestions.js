@@ -18,19 +18,19 @@ class HotsDraftSuggestions extends EventEmitter {
         });
     }
     init() {
-        throw new Error('Function "init" not implemented for current suggestion provider!');
+        throw new Error('Function "init" not implemented for current draft provider!');
     }
     update() {
-        throw new Error('Function "update" not implemented for current suggestion provider!');
+        throw new Error('Function "update" not implemented for current draft provider!');
     }
     handleGuiAction(parameters) {
-        throw new Error('Function "handleGuiAction" not implemented for current suggestion provider!');
+        throw new Error('Function "handleGuiAction" not implemented for current draft provider!');
     }
     getTemplate() {
-        throw new Error('Function "getTemplate" not implemented for current suggestion provider!');
+        throw new Error('Function "getTemplate" not implemented for current draft provider!');
     }
     getTemplateData() {
-        throw new Error('Function "getTemplateData" not implemented for current suggestion provider!');
+        throw new Error('Function "getTemplateData" not implemented for current draft provider!');
     }
 }
 

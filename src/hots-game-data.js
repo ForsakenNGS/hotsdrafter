@@ -124,7 +124,7 @@ class HotsGameData extends EventEmitter {
         return name;
     }
     fixHeroName(name) {
-        name = name.toUpperCase();
+        name = name.toUpperCase().trim();
         if (this.substitutions.hasOwnProperty(name)) {
           name = this.substitutions[name];
         }
@@ -220,6 +220,9 @@ class HotsGameData extends EventEmitter {
         }
         heroName = this.fixHeroName(heroName);
         let heroId = this.getHeroId(heroName, language);
+        if (heroId === null) {
+            console.error("Failed to find image for hero: "+heroName);
+        }
         return path.join(HotsHelpers.getStorageDir(), "heroes", heroId+"_crop.png");
     }
     getFile() {

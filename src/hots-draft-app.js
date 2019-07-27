@@ -106,14 +106,14 @@ class HotsDraftApp extends EventEmitter {
             for (let t = 0; t < teams.length; t++) {
                 let players = teams[t].getPlayers();
                 for (let p = 0; p < players.length; p++) {
-                    if (player[p].isLocked()) {
+                    if (players[p].isLocked()) {
                         playersLocked++;
                     }
                 }
             }
             if (playersLocked === 10) {
                 this.statusGameActive = true;
-                this.statusGameActiveLock = (new Date()).getTime() + 1000 * 120;
+                this.statusGameActiveLock = (new Date()).getTime() + 1000 * 180;
             }
         });
         this.screen.on("detect.map.start", () => {

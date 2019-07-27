@@ -31,6 +31,7 @@ class HotsDraftApp extends EventEmitter {
         // Status fields
         this.statusDownloadPending = false;
         this.statusGameActive = false;
+        this.statusGameActiveLock = null;
         this.statusGameSaveFile = { file: null, mtime: 0, updated: 0 };
         this.statusGameLastReplay = { file: null, mtime: 0, updated: 0 };
         this.statusDraftData = null;
@@ -99,6 +100,20 @@ class HotsDraftApp extends EventEmitter {
             this.statusDetectionRunning = false;
             if (this.debugEnabled) {
                 this.sendDebugData();
+            }
+            let playersLocked = 0;
+            let teams = this.screen.getTeams();
+            for (let t = 0; t < teams.length; t++) {
+                let players = teams[t].getPlayers();
+                for (let p = 0; p < players.length; p++) {
+                    if (player[p].isLocked()) {
+                        playersLocked++;
+                    }
+                }
+            }
+            if (playersLocked === 10) {
+                this.statusGameActive = true;
+                this.statusGameActiveLock = (new Date()).getTime() + 1000 * 120;
             }
         });
         this.screen.on("detect.map.start", () => {
@@ -312,8 +327,12 @@ class HotsDraftApp extends EventEmitter {
         }
     }
     isGameActive() {
+        let now = (new Date()).getTime();
+        if (now < this.statusGameActiveLock) {
+            return true;
+        }
         if (this.statusGameSaveFile !== null) {
-            let latestSaveAge = ((new Date()).getTime() - this.statusGameSaveFile.mtime) / 1000;
+            let latestSaveAge = (now - this.statusGameSaveFile.mtime) / 1000;
             if ((this.statusGameSaveFile.mtime - this.statusGameLastReplay.mtime) / 1000 > 30) {
                 return (latestSaveAge < 150);
             } else {

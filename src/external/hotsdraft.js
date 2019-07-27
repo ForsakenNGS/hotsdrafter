@@ -233,7 +233,7 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
             return true;
         }
         this.suggestionsForm = formJson;
-        let formDataBans = Object.assign({}, formData, { banlist: 1 });
+        let formDataBans = Object.assign({}, formData, { banlist: 1, enemies: formData.allies, allies: formData.enemies });
         let requests = [
             this.updateRequest(formData),
             this.updateRequest(formDataBans)

@@ -1,15 +1,17 @@
 // Nodejs dependencies
-const { TesseractWorker, TesseractUtils, ...TesseractTypes } = require('tesseract.js');
-const worker = new TesseractWorker();
 const jimp = require('jimp');
 const path = require('path');
 const fs = require('fs');
 const EventEmitter = require('events');
+const {TesseractWorker, TesseractUtils, ...TesseractTypes} = require('tesseract.js');
 
 // Local classes
 const HotsDraftTeam = require('./hots-draft-team.js');
 const HotsDraftPlayer = require('./hots-draft-player.js');
 const HotsHelpers = require('./hots-helpers.js');
+const TesseractCluster = require('./tesseract-cluster.js');
+
+const ocrCluster = new TesseractCluster(4);
 
 // Data files
 const DraftLayout = require('../data/draft-layout');
@@ -33,6 +35,7 @@ class HotsDraftScreen extends EventEmitter {
         this.banActive = false;
         this.screenshot = null;
         this.map = null;
+        this.mapLock = 0;
         this.teams = [];
         this.teamActive = null;
         // Update handling
@@ -193,7 +196,12 @@ class HotsDraftScreen extends EventEmitter {
             }
             this.emit("detect.start");
             this.debugDataClear();
+            let timeStart = (new Date()).getTime();
             jimp.read(screenshotFile).then((screenshot) => {
+                if (this.generateDebugFiles) {
+                    console.log("Loaded screenshot after "+((new Date()).getTime() - timeStart)+"ms");
+                    timeStart = (new Date()).getTime();
+                }
                 // Screenshot file loaded
                 this.screenshot = screenshot;
                 this.emit("detect.screenshot.load.success");
@@ -202,11 +210,30 @@ class HotsDraftScreen extends EventEmitter {
                 // Load images for detecting banned heroes (if not already loaded)
                 return this.loadBanImages();
             }).then(() => {
+                if (this.generateDebugFiles) {
+                    console.log("Loaded ban images after "+((new Date()).getTime() - timeStart)+"ms");
+                    timeStart = (new Date()).getTime();
+                }
                 this.emit("detect.ban.images.load.success");
-                // Detect map text (will invoke "detectTimer" on success)
+                // Detect draft timer
+                this.emit("detect.timer.start");
+                return this.detectTimer();
+            }).then(() => {
+                if (this.generateDebugFiles) {
+                    console.log("Detected timer after "+((new Date()).getTime() - timeStart)+"ms");
+                    timeStart = (new Date()).getTime();
+                }
+                // Success
+                this.emit("detect.timer.success");
+                this.emit("change");
+                // Detect map text
                 this.emit("detect.map.start");
                 return this.detectMap();
             }).then((mapName) => {
+                if (this.generateDebugFiles) {
+                    console.log("Detected map name after "+((new Date()).getTime() - timeStart)+"ms");
+                    timeStart = (new Date()).getTime();
+                }
                 // Success
                 if (this.getMap() !== mapName) {
                     this.clear();
@@ -214,16 +241,14 @@ class HotsDraftScreen extends EventEmitter {
                 }
                 this.emit("detect.map.success");
                 this.emit("change");
-                this.emit("detect.timer.start");
-                return this.detectTimer();
-            }).then(() => {
-                // Success
-                this.emit("detect.timer.success");
-                this.emit("change");
                 // Teams
                 this.emit("detect.teams.start");
                 return this.detectTeams();
             }).then((teams) => {
+                if (this.generateDebugFiles) {
+                    console.log("Detected teams after "+((new Date()).getTime() - timeStart)+"ms");
+                    timeStart = (new Date()).getTime();
+                }
                 if (this.teams.length === 0) {
                     // Initial detection
                     this.addTeam(teams[0]); // Team blue
@@ -256,6 +281,14 @@ class HotsDraftScreen extends EventEmitter {
                 reject(new Error("No map text found at the expected location!"));
                 return;
             }
+            // Only once every 20 seconds if already detected to improve performance
+            let timeNow = (new Date()).getTime();
+            if ((this.map === null) || (this.mapLock > timeNow)) {
+                this.mapLock = timeNow + 20;
+            } else {
+                resolve(this.getMap());
+                return;
+            }
             // Convert to black on white for optimal detection
             HotsHelpers.imageOcrOptimize(mapNameImg.scale(2).invert());
             if (this.generateDebugFiles) {
@@ -265,7 +298,7 @@ class HotsDraftScreen extends EventEmitter {
             this.debugDataAdd(mapNameImgOriginal, mapNameImg, "mapName", DraftLayout["colors"]["mapName"], [], true);
             // Detect map name using tesseract
             mapNameImg.getBufferAsync(jimp.MIME_PNG).then((buffer) => {
-                worker.recognize(buffer, this.tessLangs, this.tessParams).then((result) => {
+                ocrCluster.recognize(buffer, this.tessLangs, this.tessParams).then((result) => {
                     let mapName = this.app.gameData.fixMapName( result.text.trim() );
                     if ((mapName !== "") && (this.app.gameData.mapExists(mapName))) {
                         resolve(mapName);
@@ -376,13 +409,17 @@ class HotsDraftScreen extends EventEmitter {
     detectBans(team) {
         return new Promise(async (resolve, reject) => {
             let teamOffsets = this.offsets["teams"][team.getColor()];
-            let bans = { names: [null, null, null], images: [null, null, null] };
+            let bans = {
+                names: team.getBans(),
+                images: team.getBanImages()
+            };
             let banImageTasks = [];
             // Get offsets
             let posBans = teamOffsets["bans"];
             let sizeBan = this.offsets["banSize"];
+            let bansLocked = team.getBansLocked();
             // Check bans
-            for (let i = 0; i < posBans.length; i++) {
+            for (let i = bansLocked; i < posBans.length; i++) {
                 let posBan = posBans[i];
                 let banImg = this.screenshot.clone().crop(posBan.x, posBan.y, sizeBan.x, sizeBan.y);
                 if (!HotsHelpers.imageBackgroundMatch(banImg, DraftLayout["colors"]["banBackground"])) {
@@ -406,6 +443,10 @@ class HotsDraftScreen extends EventEmitter {
                         if (bans.names[i] !== heroNameTranslated) {
                             bans.names[i] = heroNameTranslated;
                             team.emit("change");
+                            // Lock bans that are detected properly and can not change to save detection time
+                            if (!this.banActive && (bansLocked == i)) {
+                                team.setBansLocked(++bansLocked);
+                            }
                         }
                     } else {
                         bans.names[i] = "???";
@@ -504,7 +545,7 @@ class HotsDraftScreen extends EventEmitter {
                     detections.push(
                         heroImgName.getBufferAsync(jimp.MIME_PNG).then((buffer) => {
                             imageHeroName = buffer;
-                            return worker.recognize(buffer, this.tessLangs, this.tessParams);
+                            return ocrCluster.recognize(buffer, this.tessLangs, this.tessParams);
                         }).then((result) => {
                             let heroName = this.app.gameData.correctHeroName(result.text.trim());
                             if (heroName !== pickText) {
@@ -538,10 +579,10 @@ class HotsDraftScreen extends EventEmitter {
                 detections.push(
                     playerImgName.getBufferAsync(jimp.MIME_PNG).then((buffer) => {
                         imagePlayerName = buffer;
-                        return worker.recognize(buffer, this.tessLangs, this.tessParams);
+                        return ocrCluster.recognize(buffer, this.tessLangs, this.tessParams);
                     }).then((result) => {
                         let playerName = result.text.trim();
-                        console.log(playerName);
+                        console.log(playerName+" / "+result.confidence);
                         player.setName(playerName, playerNameFinal);
                         player.setImagePlayerName(imagePlayerName);
                         return playerName;

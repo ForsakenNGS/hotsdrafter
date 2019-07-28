@@ -140,7 +140,12 @@ class HotsDraftGui extends EventEmitter {
         name = name.toUpperCase();
         return name;
     }
-
+    hasPlayerKnownPicks(playerName) {
+        return this.gameData.playerPicks.hasOwnProperty(playerName);
+    }
+    getPlayerKnownPicks(playerName) {
+        return this.gameData.playerPicks[playerName];
+    }
     getDisplays() {
         return this.displays;
     }

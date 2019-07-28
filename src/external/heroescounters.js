@@ -194,7 +194,7 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
         if (teamBlue !== null) {
             let bansBlue = teamBlue.getBans();
             for (let i = 0; i < bansBlue.length; i++) {
-                if (bansBlue[i] === "???") {
+                if ((bansBlue[i] === "???") || (bansBlue[i] === null)) {
                     continue;
                 }
                 let hero = this.getHeroByName( bansBlue[i] );
@@ -223,7 +223,7 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
         if (teamRed !== null) {
             let bansRed = teamRed.getBans();
             for (let i = 0; i < bansRed.length; i++) {
-                if (bansRed[i] === "???") {
+                if ((bansRed[i] === "???") || (bansRed[i] === null)) {
                     continue;
                 }
                 let hero = this.getHeroByName( bansRed[i] );
@@ -242,7 +242,7 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
                 if (hero !== null) {
                     this.picksRed.push(hero.id);
                 } else {
-                    console.error("Hero not found: "+playersRed[i]);
+                    console.error("Hero not found: "+playersRed[i].getCharacter());
                 }
             }
         }

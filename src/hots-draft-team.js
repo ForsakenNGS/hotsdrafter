@@ -7,6 +7,7 @@ class HotsDraftTeam extends EventEmitter {
         super();
         this.color = color;
         this.bans = [null, null, null];
+        this.bansLocked = 0;
         this.banImageData = [null, null, null];
         this.players = [];
     }
@@ -36,8 +37,14 @@ class HotsDraftTeam extends EventEmitter {
     getBans() {
         return this.bans;
     }
+    getBansLocked() {
+        return this.bansLocked;
+    }
     getBanHero(index) {
         return this.bans[index];
+    }
+    getBanImages() {
+        return this.banImageData;
     }
     getBanImageData(index) {
         return this.banImageData[index];
@@ -53,6 +60,9 @@ class HotsDraftTeam extends EventEmitter {
     }
     setColor(color) {
         this.color = color;
+    }
+    setBansLocked(bansLocked) {
+        this.bansLocked = bansLocked;
     }
 
 }

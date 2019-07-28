@@ -31,17 +31,19 @@ function createWindow () {
     win.loadFile('gui/index.html');
 
     let backend = fork("./src/backend.js");
+    let backendCallback = function(message) {
+        win.webContents.send(...message);
+    };
     ipcMain.on("gui", (event, type, ...parameters) => {
         if (type === "quit") {
+            backend.off("message", backendCallback);
             backend.kill();
             app.quit();
             return;
         }
         backend.send([type, parameters]);
     });
-    backend.on("message", function(message) {
-        win.webContents.send(...message);
-    });
+    backend.on("message", backendCallback);
 }
 
 app.on('ready', createWindow);

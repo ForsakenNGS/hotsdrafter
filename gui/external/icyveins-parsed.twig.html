@@ -34,21 +34,24 @@
     <div class="icyveins-hero-builds mb-3">
         <ul class="nav nav-tabs" id="icyveins-hero-builds" role="tablist">
         {% for build in talents.parsed.talentCheatsheet %}
-            <a class="nav-link{% if loop.first %} active{% endif %}" id="icyveins-hero-build-{{ loop.index }}-tab" role="tab"{% if loop.first %} aria-selected="true"{% endif %}
-               data-toggle="tab" href="#icyveins-hero-build-{{ loop.index }}-content" aria-controls="icyveins-hero-build-{{ loop.index }}-content">
-                {{ build.name }}
-            </a>
+            <li class="nav-item">
+                <a class="nav-link{% if loop.first %} active{% endif %}" id="icyveins-hero-build-{{ loop.index }}-tab" role="tab"
+                    data-toggle="tab" href="#icyveins-hero-build-{{ loop.index }}-content">
+                    {{ build.name }}
+                </a>
+            </li>
         {% endfor %}
         </ul>
         <div class="tab-content">
         {% for build in talents.parsed.talentCheatsheet %}
-            <div class="tab-pane bg-light text-dark fade{% if loop.first %} show active{% endif %}" id="icyveins-hero-build-{{ loop.index }}-content"
-                 role="tabpanel" aria-labelledby="icyveins-hero-build-{{ loop.index }}-tab">
-                <div class="icyveins-hero-build-talents">
-                    {{ build.talents|raw }}
-                </div>
-                <div class="icyveins-hero-build-description mx-4 mt-1 pb-1">
-                    {{ build.description|raw }}
+            <div class="tab-pane fade{% if loop.first %} show active{% endif %}" id="icyveins-hero-build-{{ loop.index }}-content" role="tabpanel">
+                <div class="bg-light text-dark">
+                    <div class="icyveins-hero-build-talents">
+                        {{ build.talents|raw }}
+                    </div>
+                    <div class="icyveins-hero-build-description mx-4 mt-1 pb-1">
+                        {{ build.description|raw }}
+                    </div>
                 </div>
             </div>
         {% endfor %}
@@ -70,10 +73,8 @@
     {% endif %}
 </div>
 <script type="text/javascript">
-jQuery(function() {
-    jQuery("#icyveins-hero-builds a").on("click", function(e) {
-        e.preventDefault();
-        jQuery(this).tab('show');
-    });
+jQuery("#icyveins-hero-builds a").on("click", function(e) {
+    e.preventDefault();
+    jQuery(this).tab('show');
 });
 </script>

@@ -15,7 +15,15 @@
         <p class="card-text text-center">
             <b>{% if heroName %}{{ heroName }}{% else %}---{% endif %}</b>
             <br />
-            <small>{{ playerName }}</small>
+            <small>
+                {{ playerName }}
+                {% if gui.hasPlayerKnownPicks(playerName) %}
+                <a data-toggle="tooltip" data-html="true" data-placement="{% if team == "blue" %}right{% else %}left{% endif %}"
+                    title="<div class='text-left'>Recent picks:{% for playerPick in gui.getPlayerKnownPicks(playerName)|slice(0, 10) %}<br>{{ playerPick[0] }} ({{ playerPick[1] }}){% endfor %}</div>">
+                    <i class="fa fa-info-circle"></i>
+                </a>
+                {% endif %}
+            </small>
         </p>
     </div>
 </div>

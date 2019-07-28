@@ -240,7 +240,8 @@ class HotsDraftApp extends EventEmitter {
             heroes: this.gameData.heroes,
             maps: this.gameData.maps,
             replays: this.gameData.replays,
-            substitutions: this.gameData.substitutions
+            substitutions: this.gameData.substitutions,
+            playerPicks: this.gameData.playerPicks
         });
     }
     sendDebugData() {
@@ -544,6 +545,7 @@ class HotsDraftApp extends EventEmitter {
     triggerGameEnd() {
         // Game ended
         this.submitReplayData();
+        this.sendGameData();
         this.emit("game.ended");
         this.sendEvent("gui", "game.end");
         if (this.debugEnabled) {
@@ -633,8 +635,8 @@ class HotsDraftApp extends EventEmitter {
             }
             this.screen.detect(image).catch((error) => {
                 if (this.debugEnabled) {
-                    if (error.message === "No map text found at the expected location!") {
-                        console.log("Screenshot not detected: No draft found (Map name not detected)")
+                    if ((error.message === "Failed to detect pick counter") || (error.message === "No map text found at the expected location!")) {
+                        console.log("Screenshot not detected: No draft found (Pick counter or map name not found)");
                     } else {
                         console.error(error);
                         console.error(error.stack);

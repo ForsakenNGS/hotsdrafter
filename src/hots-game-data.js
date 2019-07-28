@@ -35,6 +35,7 @@ class HotsGameData extends EventEmitter {
             latestReplay: { file: null, mtime: 0 },
             lastUpdate: 0
         };
+        this.playerPicks = {};
         this.saves = {
             latestSave: { file: null, mtime: 0 },
             lastUpdate: 0
@@ -77,6 +78,63 @@ class HotsGameData extends EventEmitter {
         }
         this.heroes.corrections[language][fromName] = this.getHeroName(toId, language);
         this.save();
+    }
+
+    addReplay(replayFile) {
+        return new Promise((resolve, reject) => {
+            this.progressTaskNew();
+            this.loadReplay(replayFile).then((replayData) => {
+                this.replays.fileNames.push(replayFile);
+                if (replayData !== null) {
+                    this.replays.details.push(replayData);
+                    if (this.replays.latestReplay.mtime < replayData.mtime) {
+                        this.replays.latestReplay = replayData;
+                    }
+                }
+                this.progressTaskDone();
+                resolve(replayData);
+            }).catch((error) => {
+                this.progressTaskFailed();
+                reject(error);
+            });
+        });
+    }
+    loadReplay(replayFile) {
+        return new Promise((resolve, reject) => {
+            try {
+                let fileStats = fs.statSync(replayFile);
+                let replay = new HotsReplay(replayFile);
+                let replayData = {
+                    file: replayFile,
+                    mtime: fileStats.mtimeMs,
+                    replayDetails: replay.getReplayDetails()
+                };
+                // Keep information about recent player picks
+                for (let i = 0; i < replayData.replayDetails.m_playerList.length; i++) {
+                    let player = replayData.replayDetails.m_playerList[i];
+                    if (!this.playerPicks.hasOwnProperty(player.m_name)) {
+                        this.playerPicks[player.m_name] = [];
+                    }
+                    let playerHeroFound = false;
+                    for (let h = 0; h < this.playerPicks[player.m_name].length; h++) {
+                        if (this.playerPicks[player.m_name][h][0] === player.m_hero) {
+                            this.playerPicks[player.m_name][h][1]++;
+                            playerHeroFound = true;
+                        }
+                    }
+                    if (!playerHeroFound) {
+                        this.playerPicks[player.m_name].push([ player.m_hero, 1 ]);
+                    }
+                    this.playerPicks[player.m_name].sort((a,b) => {
+                        return b[1] - a[1];
+                    });
+                }
+                // Return replay data
+                resolve(replayData);
+            } catch (error) {
+                reject(error);
+            }
+        });
     }
     downloadHeroIcon(heroId, heroImageUrl) {
         return new Promise((resolve, reject) => {
@@ -261,11 +319,12 @@ class HotsGameData extends EventEmitter {
         let cacheContent = fs.readFileSync(storageFile);
         try {
             let cacheData = JSON.parse(cacheContent.toString());
-            if (cacheData.formatVersion == 3) {
+            if (cacheData.formatVersion == 4) {
                 this.languageOptions = cacheData.languageOptions;
                 this.maps = cacheData.maps;
                 this.heroes = cacheData.heroes;
                 this.replays = cacheData.replays;
+                this.playerPicks = cacheData.playerPicks;
             }
         } catch (e) {
             console.error("Failed to read gameData data!");
@@ -297,11 +356,12 @@ class HotsGameData extends EventEmitter {
         // Write specific type into cache
         let storageFile = this.getFile();
         fs.writeFileSync( storageFile, JSON.stringify({
-            formatVersion: 3,
+            formatVersion: 4,
             languageOptions: this.languageOptions,
             maps: this.maps,
             heroes: this.heroes,
-            replays: this.replays
+            replays: this.replays,
+            playerPicks: this.playerPicks
         }) );
     }
     update() {
@@ -595,43 +655,6 @@ class HotsGameData extends EventEmitter {
     }
     progressRefresh() {
         this.emit("update.progress", Math.round(this.updateProgress.tasksDone * 100 / this.updateProgress.tasksPending));
-    }
-
-    addReplay(replayFile) {
-        return new Promise((resolve, reject) => {
-            this.progressTaskNew();
-            this.loadReplay(replayFile).then((replayData) => {
-                this.replays.fileNames.push(replayFile);
-                if (replayData !== null) {
-                    this.replays.details.push(replayData);
-                    if (this.replays.latestReplay.mtime < replayData.mtime) {
-                        this.replays.latestReplay = replayData;
-                    }
-                }
-                this.progressTaskDone();
-                resolve(replayData);
-            }).catch((error) => {
-                this.progressTaskFailed();
-                reject(error);
-            });
-        });
-    }
-
-    loadReplay(replayFile) {
-        return new Promise((resolve, reject) => {
-            try {
-                let fileStats = fs.statSync(replayFile);
-                let replay = new HotsReplay(replayFile);
-                let replayData = {
-                    file: replayFile,
-                    mtime: fileStats.mtimeMs,
-                    replayDetails: replay.getReplayDetails()
-                };
-                resolve(replayData);
-            } catch (error) {
-                reject(error);
-            }
-        });
     }
 }
 

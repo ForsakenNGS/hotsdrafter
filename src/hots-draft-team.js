@@ -62,7 +62,13 @@ class HotsDraftTeam extends EventEmitter {
         this.color = color;
     }
     setBansLocked(bansLocked) {
-        this.bansLocked = bansLocked;
+        if (this.bansLocked !== bansLocked) {
+            let bansLockedBefore = this.bansLocked;
+            this.bansLocked = bansLocked;
+            for (let i = bansLockedBefore; i < bansLocked; i++) {
+                this.emit("ban.update", i);
+            }
+        }
     }
 
 }

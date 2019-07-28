@@ -255,6 +255,7 @@ class HotsDraftScreen extends EventEmitter {
                     this.addTeam(teams[1]); // Team red
                     this.emit("detect.teams.new");
                 } else {
+                    // Update
                     this.emit("detect.teams.update");
                 }
                 this.emit("detect.teams.success");
@@ -391,6 +392,7 @@ class HotsDraftScreen extends EventEmitter {
                 for (let i = 0; i < banResult.images.length; i++) {
                     team.addBanImageData(i, banResult.images[i]);
                 }
+                team.setBansLocked(banResult.locked);
                 if (team.getPlayers().length === 0) {
                     for (let i = 0; i < result.length; i++) {
                         team.addPlayer(result[i]);
@@ -409,16 +411,16 @@ class HotsDraftScreen extends EventEmitter {
         return new Promise(async (resolve, reject) => {
             let teamOffsets = this.offsets["teams"][team.getColor()];
             let bans = {
-                names: team.getBans(),
-                images: team.getBanImages()
+                names: team.getBans().slice(0),
+                images: team.getBanImages().slice(0),
+                locked: team.getBansLocked()
             };
             let banImageTasks = [];
             // Get offsets
             let posBans = teamOffsets["bans"];
             let sizeBan = this.offsets["banSize"];
-            let bansLocked = team.getBansLocked();
             // Check bans
-            for (let i = bansLocked; i < posBans.length; i++) {
+            for (let i = bans.locked; i < posBans.length; i++) {
                 let posBan = posBans[i];
                 let banImg = this.screenshot.clone().crop(posBan.x, posBan.y, sizeBan.x, sizeBan.y);
                 if (!HotsHelpers.imageBackgroundMatch(banImg, DraftLayout["colors"]["banBackground"])) {
@@ -441,11 +443,10 @@ class HotsDraftScreen extends EventEmitter {
                         let heroNameTranslated = this.app.gameData.getHeroName(matchBestHero);
                         if (bans.names[i] !== heroNameTranslated) {
                             bans.names[i] = heroNameTranslated;
-                            team.emit("change");
-                            // Lock bans that are detected properly and can not change to save detection time
-                            if (!this.banActive && (bansLocked == i)) {
-                                team.setBansLocked(++bansLocked);
-                            }
+                        }
+                        // Lock bans that are detected properly and can not change to save detection time
+                        if (!this.banActive && (bans.locked == i)) {
+                            bans.locked++;
                         }
                     } else {
                         bans.names[i] = "???";
@@ -463,6 +464,8 @@ class HotsDraftScreen extends EventEmitter {
             } else {
                 Promise.all(banImageTasks).then((result) => {
                     resolve(bans);
+                }).catch((error) => {
+                    reject(error);
                 });
             }
         }).then((result) => {

@@ -1,4 +1,4 @@
-<div class="card {% if heroName != "???" %}text-dark bg-warning{% else %}text-dark bg-danger{% endif %} mx-1" data-index="{{ index }}"
+<div class="card {% if heroName != "???" %}text-dark {% if locked %}bg-light{% else %}bg-warning{% endif %}{% else %}text-dark bg-danger{% endif %} mx-1" data-index="{{ index }}"
       data-type="ban" data-team="{{ team }}" data-index="{{ index }}">
     {% if heroName is not null %}
         {% if heroName != "???" %}

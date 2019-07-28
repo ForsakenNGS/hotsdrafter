@@ -1,6 +1,6 @@
 {
   "name": "hotsdrafter",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Predict and support drafts for running hots matches",
   "main": "main.js",
   "scripts": {

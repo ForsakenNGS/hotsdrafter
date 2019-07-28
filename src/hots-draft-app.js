@@ -561,6 +561,7 @@ class HotsDraftApp extends EventEmitter {
             map: this.screen.getMap(),
             provider: this.collectProviderData(this.draftProvider),
             bans: [],
+            bansLocked: {},
             players: []
         };
         let teams = this.screen.getTeams();
@@ -570,6 +571,7 @@ class HotsDraftApp extends EventEmitter {
             for (let i in bans) {
                 draftData.bans.push( this.collectBanData(team, i) );
             }
+            draftData.bansLocked[team.getColor()] = team.bansLocked;
             for (let i in team.getPlayers()) {
                 let player = team.getPlayer(i);
                 draftData.players.push( this.collectPlayerData(player) );
@@ -594,6 +596,7 @@ class HotsDraftApp extends EventEmitter {
         return {
             index: index,
             team: team.getColor(),
+            locked: team.getBansLocked() > index,
             heroName: team.getBanHero(index),
             heroImage: (banImage !== null ? banImage.toString('base64') : null)
         };

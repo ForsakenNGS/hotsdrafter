@@ -283,9 +283,7 @@ class HotsDraftScreen extends EventEmitter {
             }
             // Only once every 20 seconds if already detected to improve performance
             let timeNow = (new Date()).getTime();
-            if ((this.map === null) || (this.mapLock > timeNow)) {
-                this.mapLock = timeNow + 20;
-            } else {
+            if ((this.map !== null) && (this.mapLock > timeNow)) {
                 resolve(this.getMap());
                 return;
             }
@@ -301,6 +299,7 @@ class HotsDraftScreen extends EventEmitter {
                 ocrCluster.recognize(buffer, this.tessLangs, this.tessParams).then((result) => {
                     let mapName = this.app.gameData.fixMapName( result.text.trim() );
                     if ((mapName !== "") && (this.app.gameData.mapExists(mapName))) {
+                        this.mapLock = timeNow + 20000;
                         resolve(mapName);
                     } else {
                         reject(new Error("Map name could not be detected!"));
@@ -504,7 +503,7 @@ class HotsDraftScreen extends EventEmitter {
                 // Debug output
                 playerImgNameRaw.write("debug/" + team.color + "_player" + index + "_NameTest.png");
             }
-            if (!player.isLocked()) {
+            if (!player.isLocked() || !this.app.gameData.heroExists(player.getCharacter())) {
                 // Cleanup and trim hero name
                 let heroImgName = playerImgNameRaw.clone().crop(posHeroNameRot.x, posHeroNameRot.y, sizeHeroNameRot.x, sizeHeroNameRot.y);
                 let heroImgNameOriginal = (this.generateDebugFiles ? heroImgName.clone() : null);

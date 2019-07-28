@@ -276,7 +276,7 @@ class HotsDraftApp extends EventEmitter {
     initDraftProvider() {
         // Remove old provider
         if (this.draftProvider !== null) {
-            this.draftProvider.off("change");
+            this.draftProvider.removeAllListeners("change");
             this.draftProvider = null;
         }
         // Init provider
@@ -291,7 +291,7 @@ class HotsDraftApp extends EventEmitter {
     initTalentProvider() {
         // Remove old provider
         if (this.talentProvider !== null) {
-            this.talentProvider.off("change");
+            this.talentProvider.removeAllListeners("change");
             this.talentProvider = null;
         }
         // Init provider
@@ -341,6 +341,10 @@ class HotsDraftApp extends EventEmitter {
     }
     updateForced() {
         this.screen.clear();
+        this.draftProvider.update();
+        this.talentProvider.update();
+        this.statusGameActive = false;
+        this.statusGameActiveLock = null;
         this.update();
         this.sendDraftData();
     }

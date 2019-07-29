@@ -22,7 +22,6 @@ class HotsDraftApp extends EventEmitter {
 
     constructor() {
         super();
-        this.debugEnabled = false;
         this.gameData = new HotsGameData( HotsHelpers.getConfig().getOption("language") );
         this.screen = new HotsDraftScreen(this);
         this.draftProvider = null;
@@ -41,6 +40,9 @@ class HotsDraftApp extends EventEmitter {
         this.statusUpdatePending = false;
         // Initialize
         this.registerEvents();
+    }
+    debugEnabled() {
+        return HotsHelpers.getConfig().getOption("debugEnabled");
     }
     createDraftProvider() {
         const DraftProviderName = HotsHelpers.getConfig().getOption("draftProvider");
@@ -84,20 +86,20 @@ class HotsDraftApp extends EventEmitter {
         this.screen.on("detect.error", (error) => {
             this.setDebugStep("Detection failed!")
             this.checkNextUpdate();
-            if (this.debugEnabled) {
+            if (this.debugEnabled()) {
                 console.log("Analysing screenshot failed!");
             }
         });
         this.screen.on("detect.success", () => {
             this.setDebugStep("Detection successful!")
             this.checkNextUpdate();
-            if (this.debugEnabled) {
+            if (this.debugEnabled()) {
                 console.log("Analysing screenshot successful!");
             }
         });
         this.screen.on("detect.done", () => {
             this.statusDetectionRunning = false;
-            if (this.debugEnabled) {
+            if (this.debugEnabled()) {
                 this.sendDebugData();
             }
             if (!this.statusGameActive) {
@@ -327,7 +329,7 @@ class HotsDraftApp extends EventEmitter {
             this.emit("displays.detected");
             this.updateReadyState();
             // Debug output
-            if (this.debugEnabled) {
+            if (this.debugEnabled()) {
                 console.log("=== DISPLAYS DETECTED ===");
             }
         });
@@ -363,12 +365,6 @@ class HotsDraftApp extends EventEmitter {
     }
     quit() {
         this.app.quit();
-    }
-
-
-    debug(debugEnabled) {
-        this.debugEnabled = debugEnabled;
-        this.screen.debug(debugEnabled);
     }
     checkNextUpdate() {
         if (!this.statusGameActive && (this.screen.getMap() !== null)) {
@@ -483,7 +479,7 @@ class HotsDraftApp extends EventEmitter {
                 this.statusDraftActive = false;
                 this.emit("draft.ended");
                 this.sendDraftState();
-                if (this.debugEnabled) {
+                if (this.debugEnabled()) {
                     console.log("=== DRAFT ENDED ===");
                 }
             }
@@ -496,7 +492,7 @@ class HotsDraftApp extends EventEmitter {
                     this.statusDraftActive = true;
                     this.emit("draft.started");
                     this.sendDraftState();
-                    if (this.debugEnabled) {
+                    if (this.debugEnabled()) {
                         console.log("=== DRAFT STARTED ===");
                     }
                 }
@@ -506,7 +502,7 @@ class HotsDraftApp extends EventEmitter {
                     // Draft just ended
                     this.statusDraftActive = false;
                     this.emit("draft.ended");
-                    if (this.debugEnabled) {
+                    if (this.debugEnabled()) {
                         console.log("=== DRAFT ENDED ===");
                     }
                 }
@@ -542,7 +538,7 @@ class HotsDraftApp extends EventEmitter {
         this.emit("game.started");
         this.sendEvent("gui", "game.start");
         this.setDebugStep("Waiting for game to end...");
-        if (this.debugEnabled) {
+        if (this.debugEnabled()) {
             console.log("=== GAME STARTED ===");
         }
     }
@@ -552,7 +548,7 @@ class HotsDraftApp extends EventEmitter {
         this.sendGameData();
         this.emit("game.ended");
         this.sendEvent("gui", "game.end");
-        if (this.debugEnabled) {
+        if (this.debugEnabled()) {
             console.log("=== GAME ENDED ===");
         }
     }
@@ -637,11 +633,11 @@ class HotsDraftApp extends EventEmitter {
                 return;
             }
             this.setDebugStep("Analysing screenshot...");
-            if (this.debugEnabled) {
+            if (this.debugEnabled()) {
                 console.log("Analysing screenshot...");
             }
             this.screen.detect(image).catch((error) => {
-                if (this.debugEnabled) {
+                if (this.debugEnabled()) {
                     if ((error.message === "Failed to detect pick counter") || (error.message === "No map text found at the expected location!")) {
                         console.log("Screenshot not detected: No draft found (Pick counter or map name not found)");
                     } else {
@@ -652,7 +648,7 @@ class HotsDraftApp extends EventEmitter {
             });
         }).catch((error) => {
             this.statusDetectionRunning = false;
-            if (this.debugEnabled) {
+            if (this.debugEnabled()) {
                 console.error(error);
                 console.error(error.stack);
             }

@@ -21,7 +21,6 @@ class HotsDraftGui extends EventEmitter {
 
     constructor(window) {
         super();
-        this.debugEnabled = false;
         this.debugStep = "Initializing...";
         this.document = window.document;
         this.window = window;
@@ -40,11 +39,9 @@ class HotsDraftGui extends EventEmitter {
         this.sendEvent("gui", "window.ready");
         this.renderPage();
     }
-
-    debug(debugEnabled) {
-        this.debugEnabled = debugEnabled;
+    debugEnabled() {
+        return HotsHelpers.getConfig().getOption("debugEnabled");
     }
-
     registerEvents() {
         ipcRenderer.on("gui", (event, type, ...parameters) => {
             this.handleEvent(event, type, parameters);

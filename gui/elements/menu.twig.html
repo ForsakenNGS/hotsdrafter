@@ -2,7 +2,7 @@
     <a href="#" class="navbar-brand">
         <img class="navbar-brand-icon" src="../build/icon_64x64.png" class="img-fluid">
         Hots-Drafter
-        {% if gui.debugEnabled %}
+        {% if gui.debugEnabled() %}
             <span class="badge badge-info ml-3 debug-step">
                 {{ gui.debugStep }}
             </span>
@@ -21,6 +21,7 @@
                 Replays
             </a>
         </li>
+        {% if gui.debugEnabled() %}
         <li class="nav-item dropdown">
             <a href="#dev" class="nav-link dropdown-toggle" data-toggle="dropdown">
                 <i class="fab fa-dev"></i>
@@ -37,6 +38,7 @@
                 </a>
             </div>
         </li>
+        {% endif %}
         <li class="nav-item{% if gui.page=="config" %} active{% endif %}">
             <a href="#config" data-action="config" class="nav-link">
                 <i class="fa fa-cog"></i>

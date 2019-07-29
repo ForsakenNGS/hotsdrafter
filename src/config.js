@@ -15,6 +15,7 @@ class Config {
     constructor() {
         this.options = {
             language: "en-us",
+            debugEnabled: false,
             draftProvider: "heroescounters",
             talentProvider: "icyveins",
             playerName: "",

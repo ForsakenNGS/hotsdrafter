@@ -1,0 +1,54 @@
+<tbody data-type="replay" data-index="{{ index }}">
+    <tr>
+        <td>
+            <a onclick="jQuery(this).closest('tr').toggleClass('expanded');" class="btn btn-sm btn-dark">
+                <i class="fa fa-minus-circle"></i>
+                <i class="fa fa-plus-circle"></i>
+            </a>
+        </td>
+        <td>{{ (mtime / 1000)|date("Y-m-d H:i") }}</td>
+        <td>{{ replayDetails.m_title }}</td>
+        <td>
+        {% for uploadProvider, status in replayUploads %}
+            <span class="badge badge-{% if status.result == "success" %}success{% elseif status.result == "error" %}danger{% elseif status.result == "pending" %}info{% else %}warning{% endif %}"
+                  title="{% if status.result != "error" %}{{ status.result }}{% else %}{{ status.error|json_encode() }}{% endif %}">
+                {{ uploadProvider }}
+            </span>
+        {% endfor %}
+        </td>
+    </tr>
+    <tr class="details">
+        <td colspan="3">
+            <div class="row">
+                <div class="col">
+                    <table class="table-sm table-bordered table-info table-striped text-dark text-left" style="width: 100%;">
+                        <tr>
+                            <th>Player Name</th>
+                            <th>Hero</th>
+                        </tr>
+                    {% for player in replayDetails.m_playerList if player.m_teamId == 0 %}
+                        <tr>
+                            <td>{{ player.m_name }}</td>
+                            <td>{{ player.m_hero }}</td>
+                        </tr>
+                    {% endfor %}
+                    </table>
+                </div>
+                <div class="col">
+                    <table class="table-sm table-bordered table-danger table-striped text-dark text-right" style="width: 100%;">
+                        <tr>
+                            <th>Hero</th>
+                            <th>Player Name</th>
+                        </tr>
+                    {% for player in replayDetails.m_playerList if player.m_teamId == 1 %}
+                        <tr>
+                            <td>{{ player.m_hero }}</td>
+                            <td>{{ player.m_name }}</td>
+                        </tr>
+                    {% endfor %}
+                    </table>
+                </div>
+            </div>
+        </td>
+    </tr>
+</tbody>

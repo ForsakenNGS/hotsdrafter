@@ -14,7 +14,8 @@ const templates = {
     "replays": path.resolve(__dirname, "..", "gui", "pages", "replays.twig.html"),
     "detectionTuningContent": path.resolve(__dirname, "..", "gui", "elements", "detectionTuning.content.twig.html"),
     "elementBan": path.resolve(__dirname, "..", "gui", "elements", "ban.twig.html"),
-    "elementPlayer": path.resolve(__dirname, "..", "gui", "elements", "player.twig.html")
+    "elementPlayer": path.resolve(__dirname, "..", "gui", "elements", "player.twig.html"),
+    "elementReplay": path.resolve(__dirname, "..", "gui", "elements", "replay.twig.html")
 };
 
 class HotsDraftGui extends EventEmitter {
@@ -75,6 +76,9 @@ class HotsDraftGui extends EventEmitter {
                 break;
             case "talentProvider.update":
                 this.updateTalentProvider(...parameters);
+                break;
+            case "replay.update":
+                this.updateReplay(...parameters);
                 break;
             case "game.start":
                 this.gameActive = true;
@@ -315,6 +319,26 @@ class HotsDraftGui extends EventEmitter {
             } else {
                 jQuery(selector).replaceWith(html);
                 jQuery(document).trigger("player.init", jQuery(selector));
+            }
+        });
+    }
+
+    updateReplay(replayData) {
+        // Update local game data
+        this.gameData.replays.details[replayData.index] = replayData;
+        // Update gui
+        let selector = "[data-type=\"replay\"][data-index=\""+replayData.index+"\"]";
+        if (jQuery(selector).length === 0) {
+            // No element available. Skip.
+            // TODO: Render the whole page in this case?
+            return;
+        }
+        Twig.renderFile(templates.elementReplay, Object.assign({ gui: this }, replayData), (error, html) => {
+            if (error) {
+                console.error(error);
+            } else {
+                jQuery(selector).replaceWith(html);
+                jQuery(document).trigger("replay.init", jQuery(selector));
             }
         });
     }

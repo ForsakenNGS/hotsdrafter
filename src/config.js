@@ -21,7 +21,8 @@ class Config {
             playerName: "",
             gameDisplay: null,
             gameStorageDir: null,
-            gameImproveDetection: true
+            gameImproveDetection: true,
+            uploadProvider_hotsapi: false
         };
         this.visible = false;
         // Load gameData and exceptions from disk

@@ -9,7 +9,11 @@ const EventEmitter = require('events');
 
 // Local classes
 const HotsReplay = require('hots-replay');
+const HotsReplayUploaders = {
+    "hotsapi": require('./replay-uploaders/hotsapi.js')
+};
 const HotsHelpers = require('./hots-helpers.js');
+
 
 class HotsGameData extends EventEmitter {
 
@@ -107,7 +111,8 @@ class HotsGameData extends EventEmitter {
                 let replayData = {
                     file: replayFile,
                     mtime: fileStats.mtimeMs,
-                    replayDetails: replay.getReplayDetails()
+                    replayDetails: replay.getReplayDetails(),
+                    replayUploads: {}
                 };
                 // Keep information about recent player picks
                 for (let i = 0; i < replayData.replayDetails.m_playerList.length; i++) {
@@ -596,6 +601,39 @@ class HotsGameData extends EventEmitter {
             this.progressTaskFailed();
             throw error;
         });
+    }
+    uploadReplays() {
+        // Check upload state
+        let uploadPromise = Promise.resolve(0);
+        for (var uploadProvider in HotsReplayUploaders) {
+            if (!HotsHelpers.getConfig().getOption("uploadProvider_"+uploadProvider)) {
+                // Skip disabled providers
+                continue;
+            }
+            for (let i = 0; i < this.replays.details.length; i++) {
+                let replayData = this.replays.details[i];
+                if (typeof replayData.replayUploads[uploadProvider] === "undefined") {
+                    // Not uploaded yet
+                    replayData.replayUploads[uploadProvider] = { result: "pending" };
+                    this.emit("replay.update", i);
+                    uploadPromise = uploadPromise.then((uploadCount) => {
+                        uploadCount++;
+                        return new Promise((resolve, reject) => {
+                            HotsReplayUploaders[uploadProvider].upload(replayData.file).then((result) => {
+                                replayData.replayUploads[uploadProvider] = { result: result };
+                                this.emit("replay.update", i);
+                                resolve(uploadCount);
+                            }).catch((error) => {
+                                replayData.replayUploads[uploadProvider] = { result: "error", error: error };
+                                this.emit("replay.update", i);
+                                resolve(uploadCount);
+                            });
+                        });
+                    });
+                }
+            }
+        }
+        return uploadPromise;
     }
     updateSaves() {
         this.progressTaskNew();

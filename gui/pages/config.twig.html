@@ -75,6 +75,19 @@
             </div>
         </div>
         <div class="form-group row">
+            <label class="col-sm-3 col-form-label">
+                Automatic replay upload
+            </label>
+            <div class="col">
+                <div class="form-check pt-2">
+                    <input class="form-check-input" type="checkbox" id="uploadProvider_hotsapi"{% if gui.config.uploadProvider_hotsapi %} checked{% endif %} />
+                    <label class="form-check-label" for="uploadProvider_hotsapi">
+                        Upload replays to hotsapi.net
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="form-group row">
             <label for="gameImproveDetection" class="col-sm-3 col-form-label">
                 Improve detection
             </label>
@@ -140,6 +153,11 @@
         jQuery("#playerName").on("change keyup", function() {
             let value = jQuery(this).val();
             gui.setConfigOption("playerName", value);
+        });
+        // Automatic replay upload
+        jQuery("#uploadProvider_hotsapi").on("change", function() {
+            let value = jQuery(this).is(":checked");
+            gui.setConfigOption("uploadProvider_hotsapi", value);
         });
         // Enable or disable submission of training data
         jQuery("#gameImproveDetection").on("change", function() {

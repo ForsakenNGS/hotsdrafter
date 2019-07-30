@@ -171,6 +171,9 @@ class HotsDraftApp extends EventEmitter {
                 }
             }
         });
+        this.gameData.on("replay.update", (index) => {
+            this.sendReplayData(index);
+        });
     }
     handleEvent(type, parameters) {
         switch (type) {
@@ -256,6 +259,9 @@ class HotsDraftApp extends EventEmitter {
     }
     sendPlayerData(player) {
         this.sendEvent("gui", "player.update", this.collectPlayerData(player));
+    }
+    sendReplayData(replayIndex) {
+        this.sendEvent("gui", "replay.update", this.collectReplayData(replayIndex));
     }
     sendDraftProvider(provider) {
         this.sendEvent("gui", "draftProvider.update", this.collectProviderData(provider));
@@ -528,6 +534,14 @@ class HotsDraftApp extends EventEmitter {
                     this.triggerGameEnd();
                 }
             }
+            // Upload missing replays
+            return this.gameData.uploadReplays();
+        }).then((uploadCount) => {
+            if (uploadCount > 0) {
+                // Save updated game data and send it to the gui
+                this.gameData.save();
+                this.sendGameData();
+            }
         });
     }
     triggerGameStart() {
@@ -608,6 +622,9 @@ class HotsDraftApp extends EventEmitter {
             detectionFailed: player.isDetectionFailed(),
             locked: player.isLocked()
         };
+    }
+    collectReplayData(replayIndex) {
+        return Object.assign({ index:replayIndex}, this.gameData.replays.details[replayIndex]);
     }
     updateLanguage() {
         this.screen.updateLanguage();

@@ -4,56 +4,16 @@
         <h1>Recent Replays</h1>
 
         <table class="table table-sm table-bordered table-striped table-dark replay-list">
-            <tr>
-                <th></th>
-                <th>Date</th>
-                <th>Map</th>
-            </tr>
-        {% for replay in gui.gameData.replays.details %}
-            <tr>
-                <td>
-                    <a onclick="jQuery(this).closest('tr').toggleClass('expanded');" class="btn btn-sm btn-dark">
-                        <i class="fa fa-minus-circle"></i>
-                        <i class="fa fa-plus-circle"></i>
-                    </a>
-                </td>
-                <td>{{ (replay.mtime / 1000)|date("Y-m-d H:i") }}</td>
-                <td>{{ replay.replayDetails.m_title }}</td>
-            </tr>
-            <tr class="details">
-                <td colspan="3">
-                    <div class="row">
-                        <div class="col">
-                            <table class="table-sm table-bordered table-info table-striped text-dark text-left" style="width: 100%;">
-                                <tr>
-                                    <th>Player Name</th>
-                                    <th>Hero</th>
-                                </tr>
-                            {% for player in replay.replayDetails.m_playerList if player.m_teamId == 0 %}
-                                <tr>
-                                    <td>{{ player.m_name }}</td>
-                                    <td>{{ player.m_hero }}</td>
-                                </tr>
-                            {% endfor %}
-                            </table>
-                        </div>
-                        <div class="col">
-                            <table class="table-sm table-bordered table-danger table-striped text-dark text-right" style="width: 100%;">
-                                <tr>
-                                    <th>Hero</th>
-                                    <th>Player Name</th>
-                                </tr>
-                            {% for player in replay.replayDetails.m_playerList if player.m_teamId == 1 %}
-                                <tr>
-                                    <td>{{ player.m_hero }}</td>
-                                    <td>{{ player.m_name }}</td>
-                                </tr>
-                            {% endfor %}
-                            </table>
-                        </div>
-                    </div>
-                </td>
-            </tr>
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Date</th>
+                    <th>Map</th>
+                    <th>Uploaded to</th>
+                </tr>
+            </thead>
+        {% for index, replay in gui.gameData.replays.details %}
+            {% include "../elements/replay.twig.html" with replay %}
         {% endfor %}
         </table>
     </div>

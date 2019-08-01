@@ -17,10 +17,10 @@
             <br />
             <small>
                 {{ playerName }}
-                {% if gui.hasPlayerKnownPicks(playerName) %}
-                <a data-toggle="tooltip" data-html="true" data-placement="{% if team == "blue" %}right{% else %}left{% endif %}"
-                    title="<div class='text-left'>Recent picks:{% for playerPick in gui.getPlayerKnownPicks(playerName)|slice(0, 10) %}<br>{{ playerPick[0] }} ({{ playerPick[1] }}){% endfor %}</div>">
+                {% if recentPicks != null %}
+                <a data-html="true" data-tooltip="player-picks" data-placement="{% if team == "blue" %}right{% else %}left{% endif %}">
                     <i class="fa fa-info-circle"></i>
+                    <script data-content="player-picks" type="text/html">{% include "../elements/playerPicks.twig.html" %}</script>
                 </a>
                 {% endif %}
             </small>

@@ -71,9 +71,11 @@ class IcyVeinsProvider extends HotsTalentSuggestions {
                 this.updateActive = false;
                 if (error || (typeof response === "undefined")) {
                     reject(error);
+                    return;
                 }
                 if (response.statusCode !== 200) {
                     reject('Invalid status code <' + response.statusCode + '>');
+                    return;
                 }
                 this.loadCoreData(body);
                 resolve(true);
@@ -131,9 +133,11 @@ class IcyVeinsProvider extends HotsTalentSuggestions {
             }, (error, response, body) => {
                 if (error || (typeof response === "undefined")) {
                     reject(error);
+                    return;
                 }
                 if (response.statusCode !== 200) {
                     reject('Invalid status code <' + response.statusCode + '>');
+                    return;
                 }
                 this.parseBuildSectionData(body, section);
                 resolve(true);

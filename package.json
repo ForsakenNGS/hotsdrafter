@@ -1,6 +1,6 @@
 {
   "name": "hotsdrafter",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "Predict and support drafts for running hots matches",
   "main": "main.js",
   "scripts": {
@@ -30,16 +30,17 @@
     "@electron-forge/maker-zip": "6.0.0-beta.33",
     "@fortawesome/fontawesome-free": "^5.9.0",
     "electron": "^5.0.6",
-    "electron-builder": "^21.0.15",
-    "electron-forge-maker-appimage": "^21.1.2",
+    "electron-builder": "^21.2.0",
+    "electron-forge-maker-appimage": "^21.2.0",
     "electron-winstaller": "^3.0.4"
   },
   "dependencies": {
     "@electron-forge/publisher-github": "^6.0.0-beta.43",
+    "@google-cloud/bigquery": "^4.1.6",
     "bootstrap": "^4.3.1",
     "cheerio": "^1.0.0-rc.3",
     "electron-squirrel-startup": "^1.0.0",
-    "hots-replay": "^1.0.0",
+    "hots-replay": "^1.0.3",
     "jimp": "^0.6.4",
     "jquery": "^3.4.1",
     "popper.js": "^1.15.0",

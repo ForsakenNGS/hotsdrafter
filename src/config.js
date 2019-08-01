@@ -22,6 +22,8 @@ class Config {
             gameDisplay: null,
             gameStorageDir: null,
             gameImproveDetection: true,
+            googleBigQueryProject: null,
+            googleBigQueryAuth: null,
             uploadProvider_hotsapi: false
         };
         this.visible = false;

@@ -135,9 +135,11 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
                 this.updateActive = false;
                 if (error || (typeof response === "undefined")) {
                     reject(error);
+                    return;
                 }
                 if (response.statusCode !== 200) {
                     reject('Invalid status code <' + response.statusCode + '>');
+                    return;
                 }
                 this.loadCoreData(body);
                 resolve(true);
@@ -261,11 +263,13 @@ class HeroesCountersProvider extends HotsDraftSuggestions {
                 'json': true
             }, (error, response, body) => {
                 this.updateActive = false;
-                if (error) {
+                if (error || (typeof response === "undefined")) {
                     reject(error);
+                    return;
                 }
                 if (response.statusCode !== 200) {
                     reject('Invalid status code <' + response.statusCode + '>');
+                    return;
                 }
                 resolve(body);
             });

@@ -1,13 +1,20 @@
 .navbar-main-menu {
-  -webkit-user-select: none;
-  -webkit-app-region: drag;
+    -webkit-user-select: none;
+    -webkit-app-region: drag;
 }
+
 .navbar-main-menu .navbar-nav {
-  -webkit-app-region: no-drag;
+    -webkit-app-region: no-drag;
 }
+
 .navbar-main-menu .navbar-brand-icon {
-  height: 32px;
+    height: 32px;
 }
+
+.popover {
+    max-width: 600px;
+}
+
 .content {
     position: absolute;
     overflow: auto;
@@ -16,6 +23,7 @@
     top: 60px;
     bottom: 0;
 }
+
 .talents {
     position: absolute;
     left: 0;
@@ -23,24 +31,31 @@
     bottom: 0;
     top: 0;
 }
+
 .replay-list tr i.fa.fa-plus-circle {
     display: inline;
 }
+
 .replay-list tr i.fa.fa-minus-circle {
     display: none;
 }
+
 .replay-list tr + tr.details {
     display: none;
 }
+
 .replay-list tr.expanded i.fa.fa-plus-circle {
     display: none;
 }
+
 .replay-list tr.expanded i.fa.fa-minus-circle {
     display: inline;
 }
+
 .replay-list tr.expanded + tr.details {
     display: table-row;
 }
+
 .main-flex {
     position: absolute;
     top: 0;
@@ -48,9 +63,11 @@
     right: 0;
     bottom: 0;
 }
+
 .main-flex .center-area {
     overflow: auto;
 }
+
 .player-hero-none {
     display: inline-block;
     min-height: 58px;
@@ -58,6 +75,7 @@
     text-align: center;
     background: #000000;
 }
+
 .ban-hero-none {
     display: inline-block;
     min-height: 58px;
@@ -66,10 +84,12 @@
     text-align: center;
     background: #000000;
 }
+
 .team-blue .card,
 .team-read .card {
     min-width: 92px;
 }
+
 .team-blue-bans .card-img-top,
 .team-red-bans .card-img-top {
     height: 64px;
@@ -81,6 +101,7 @@
     width: 80px;
     position: relative;
 }
+
 .provider-heroescounters .heroescounters-hero .heroescounters-sort-value {
     position: absolute;
     bottom: 2px;
@@ -92,12 +113,15 @@
 .provider-hotsdraft .bonus {
     color: #28a745;
 }
+
 .provider-hotsdraft .malus {
     color: #dc3545;
 }
+
 .provider-hotsdraft .hero {
     font-weight: bold;
 }
+
 .provider-hotsdraft .notes {
     font-size: 13px;
     line-height: 14px;
@@ -107,36 +131,44 @@
     height: 100%;
     overflow: auto;
 }
+
 .provider-icyveins iframe {
-    width:100%;
+    width: 100%;
     height: 99%;
 }
+
 .provider-icyveins a {
     color: inherit;
     font-weight: bold;
 }
+
 .provider-icyveins .spell_icon {
     max-height: 20px
 }
+
 .icyveins-hero-build-talents {
     display: flex;
     flex-direction: row;
     justify-content: center;
 }
+
 .icyveins-hero-build-talents .heroes_build_talent_tier {
     display: flex;
     flex-direction: column;
     margin: 8px;
 }
+
 .icyveins-hero-build-talents .heroes_build_talent_tier_subtitle {
     text-align: center;
 }
+
 .icyveins-hero-build-talents .heroes_build_talent_tier_visual {
     display: flex;
     flex-direction: row;
     padding: 8px;
     justify-content: center;
 }
+
 .icyveins-hero-build-talents .heroes_build_talent_tier_visual .heroes_build_talent_tier_situational,
 .icyveins-hero-build-talents .heroes_build_talent_tier_visual .heroes_build_talent_tier_yes,
 .icyveins-hero-build-talents .heroes_build_talent_tier_visual .heroes_build_talent_tier_no {
@@ -146,30 +178,37 @@
     border-radius: 2px;
     align-self: flex-end;
 }
+
 .icyveins-hero-build-talents .heroes_build_talent_tier_visual .heroes_build_talent_tier_situational {
     background-color: #ffb100;
 }
+
 .icyveins-hero-build-talents .heroes_build_talent_tier_visual .heroes_build_talent_tier_yes {
     background-color: #00ff00;
     width: 12px;
     height: 12px;
     align-self: flex-start;
 }
+
 .icyveins-hero-build-talents .heroes_build_talent_tier_visual .heroes_build_talent_tier_no {
     background-color: rgba(0, 0, 0, 0.75);
 }
+
 .icyveins-hero-build-talents .heroes_build_talent_tier > .heroes_build_talent_tier_recommended img {
     width: 64px;
     margin-bottom: 8px;
     align-self: center;
 }
+
 .icyveins-hero-build-talents .heroes_build_talent_tier > .heroes_build_talent_tier_situational {
     position: relative;
     align-self: center;
 }
+
 .icyveins-hero-build-talents .heroes_build_talent_tier > .heroes_build_talent_tier_situational img {
     width: 40px;
 }
+
 .icyveins-hero-build-talents .heroes_build_talent_tier > .heroes_build_talent_tier_situational .talent_marker.talent_marker_maybe {
     position: absolute;
     left: 50%;

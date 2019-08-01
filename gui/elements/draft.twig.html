@@ -32,10 +32,19 @@
 </div>
 <script type="text/javascript">
 jQuery(function() {
+    let playerInitTooltip = function(element) {
+        jQuery(element).find("[data-tooltip=\"player-picks\"]").each(function() {
+            jQuery(this).popover({
+                trigger: 'hover',
+                content: jQuery(this).find("script[data-content=\"player-picks\"]").html(),
+                container: this
+            });
+        });
+    };
     jQuery(document).on("player.init", function(event, element) {
-        jQuery(element).find("[data-toggle=\"tooltip\"]").tooltip();
+        playerInitTooltip(element);
     });
-    jQuery(".main-flex").find("[data-toggle=\"tooltip\"]").tooltip();
+    playerInitTooltip(".main-flex");
 });
 </script>
 {% include "../elements/correction.twig.html" %}

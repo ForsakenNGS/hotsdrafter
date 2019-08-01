@@ -75,6 +75,22 @@
             </div>
         </div>
         <div class="form-group row">
+            <label for="googleBigQueryProject" class="col-sm-3 col-form-label">
+                Google BigQuery project id
+            </label>
+            <div class="col">
+                <input type="text" class="form-control" id="googleBigQueryProject" value="{{ gui.config.googleBigQueryProject }}" >
+            </div>
+        </div>
+        <div class="form-group row">
+            <label for="googleBigQueryAuth" class="col-sm-3 col-form-label">
+                Google BigQuery authentification file (for HotsApi.net data access)
+            </label>
+            <div class="col">
+                <input type="text" class="form-control" id="googleBigQueryAuth" value="{{ gui.config.googleBigQueryAuth }}" >
+            </div>
+        </div>
+        <div class="form-group row">
             <label class="col-sm-3 col-form-label">
                 Automatic replay upload
             </label>
@@ -118,6 +134,7 @@
     jQuery(function() {
 
         const fs = require("fs");
+        const dialog = require('electron').remote.dialog;
 
         // Change language
         jQuery("#language").on("change", function() {
@@ -140,10 +157,49 @@
             gui.setConfigOption("gameDisplay", value);
         });
         // Change game storage directory
-        jQuery("#gameStorageDir").on("change keyup", function() {
+        jQuery("#gameStorageDir").on("click", function() {
+            let value = jQuery(this).val();
+            let dialogOptions = { properties: ['openDirectory'] };
+            if (value !== "") {
+                dialogOptions.defaultPath = value;
+            }
+            dialog.showOpenDialog(dialogOptions, (result) => {
+                if (typeof result !== "undefined") {
+                    jQuery(this).val(result[0]).trigger("change");
+                }
+            });
+        });
+        jQuery("#gameStorageDir").on("change", function() {
             let value = jQuery(this).val();
             if (fs.existsSync(value)) {
                 gui.setConfigOption("gameStorageDir", (value !== "" ? value : null));
+                jQuery(this).addClass("is-valid").removeClass("is-invalid");
+            } else {
+                jQuery(this).addClass("is-invalid").removeClass("is-valid");
+            }
+        });
+        // Change google BigQuery project id
+        jQuery("#googleBigQueryProject").on("change keyup", function() {
+            let value = jQuery(this).val();
+            gui.setConfigOption("googleBigQueryProject", (value !== "" ? value : null));
+        });
+        // Change google BigQuery authentification file
+        jQuery("#googleBigQueryAuth").on("click", function() {
+            let value = jQuery(this).val();
+            let dialogOptions = { properties: ['openFile'] };
+            if (value !== "") {
+                dialogOptions.defaultPath = value;
+            }
+            dialog.showOpenDialog(dialogOptions, (result) => {
+                if (typeof result !== "undefined") {
+                    jQuery(this).val(result[0]).trigger("change");
+                }
+            });
+        });
+        jQuery("#googleBigQueryAuth").on("change", function() {
+            let value = jQuery(this).val();
+            if (fs.existsSync(value)) {
+                gui.setConfigOption("googleBigQueryAuth", (value !== "" ? value : null));
                 jQuery(this).addClass("is-valid").removeClass("is-invalid");
             } else {
                 jQuery(this).addClass("is-invalid").removeClass("is-valid");

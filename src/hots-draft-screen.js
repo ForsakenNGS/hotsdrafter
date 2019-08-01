@@ -585,12 +585,13 @@ class HotsDraftScreen extends EventEmitter {
                 detections.push(
                     playerImgName.getBufferAsync(jimp.MIME_PNG).then((buffer) => {
                         imagePlayerName = buffer;
-                        return ocrCluster.recognize(buffer, this.tessLangs+"+lat+rus+kor+chi_sim", this.tessParams);
+                        return ocrCluster.recognize(buffer, this.tessLangs+"+lat+rus+kor", this.tessParams);
                     }).then((result) => {
                         let playerName = result.text.trim();
                         console.log(playerName+" / "+result.confidence);
                         player.setName(playerName, playerNameFinal);
                         player.setImagePlayerName(imagePlayerName);
+                        this.app.gameData.updatePlayerRecentPicks(player);
                         return playerName;
                     })
                 );

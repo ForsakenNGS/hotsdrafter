@@ -246,6 +246,7 @@ class HotsDraftApp extends EventEmitter {
             maps: this.gameData.maps,
             replays: this.gameData.replays,
             substitutions: this.gameData.substitutions,
+            playerBattleTags: this.gameData.playerBattleTags,
             playerPicks: this.gameData.playerPicks
         });
     }
@@ -620,7 +621,8 @@ class HotsDraftApp extends EventEmitter {
             heroName: player.getCharacter(),
             heroNameImage: (player.isLocked() ? player.getImageHeroName().toString('base64') : null),
             detectionFailed: player.isDetectionFailed(),
-            locked: player.isLocked()
+            locked: player.isLocked(),
+            recentPicks: player.getRecentPicks()
         };
     }
     collectReplayData(replayIndex) {

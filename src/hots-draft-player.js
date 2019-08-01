@@ -14,6 +14,7 @@ class HotsDraftPlayer extends EventEmitter {
         this.locked = false;
         this.imagePlayerName = null;
         this.imageHeroName = null;
+        this.recentPicks = null;
     }
     getIndex() {
         return this.index;
@@ -32,6 +33,9 @@ class HotsDraftPlayer extends EventEmitter {
     }
     getImageHeroName() {
         return this.imageHeroName;
+    }
+    getRecentPicks() {
+        return this.recentPicks;
     }
     isDetectionFailed() {
         return this.detectionError;
@@ -89,6 +93,10 @@ class HotsDraftPlayer extends EventEmitter {
     }
     setImageHeroName(image) {
         this.imageHeroName = image;
+    }
+    setRecentPicks(picks) {
+        this.recentPicks = picks;
+        this.emit("change");
     }
 }
 

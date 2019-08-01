@@ -1,0 +1,11 @@
+<div class='text-left d-flex text-dark'>
+{% for battleTag, battleTagPicks in recentPicks %}
+    <div class="pr-2">
+        <b>{{ battleTag }}</b>
+        {% for playerPick in battleTagPicks|slice(0, 8) %}
+            <br>
+            {{ playerPick[0] }} ({{ playerPick[1] }})
+        {% endfor %}
+    </div>
+{% endfor %}
+</div>

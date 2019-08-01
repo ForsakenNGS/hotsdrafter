@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const jimp = require('jimp');
 const EventEmitter = require('events');
+const {BigQuery} = require('@google-cloud/bigquery');
 
 // Local classes
 const HotsReplay = require('hots-replay');
@@ -14,6 +15,11 @@ const HotsReplayUploaders = {
 };
 const HotsHelpers = require('./hots-helpers.js');
 
+// BigQuery Instance
+let bigQueryHotsApi = new BigQuery({
+    projectId: HotsHelpers.getConfig().getOption("googleBigQueryProject"),
+    keyFilename: HotsHelpers.getConfig().getOption("googleBigQueryAuth")
+});
 
 class HotsGameData extends EventEmitter {
 
@@ -40,6 +46,7 @@ class HotsGameData extends EventEmitter {
             lastUpdate: 0
         };
         this.playerPicks = {};
+        this.playerBattleTags = {};
         this.saves = {
             latestSave: { file: null, mtime: 0 },
             lastUpdate: 0
@@ -114,25 +121,20 @@ class HotsGameData extends EventEmitter {
                     replayDetails: replay.getReplayDetails(),
                     replayUploads: {}
                 };
+                let battleTags = replay.getReplayBattleLobby().battleTags;
                 // Keep information about recent player picks
                 for (let i = 0; i < replayData.replayDetails.m_playerList.length; i++) {
                     let player = replayData.replayDetails.m_playerList[i];
-                    if (!this.playerPicks.hasOwnProperty(player.m_name)) {
-                        this.playerPicks[player.m_name] = [];
-                    }
-                    let playerHeroFound = false;
-                    for (let h = 0; h < this.playerPicks[player.m_name].length; h++) {
-                        if (this.playerPicks[player.m_name][h][0] === player.m_hero) {
-                            this.playerPicks[player.m_name][h][1]++;
-                            playerHeroFound = true;
+                    if (battleTags.length > i) {
+                        // Add battle tag
+                        let playerBattleTag = battleTags[i].tag;
+                        if (!this.playerBattleTags.hasOwnProperty(player.m_name)) {
+                            this.playerBattleTags[player.m_name] = [];
+                        }
+                        if (this.playerBattleTags[player.m_name].indexOf(playerBattleTag) === -1) {
+                            this.playerBattleTags[player.m_name].push(playerBattleTag);
                         }
                     }
-                    if (!playerHeroFound) {
-                        this.playerPicks[player.m_name].push([ player.m_hero, 1 ]);
-                    }
-                    this.playerPicks[player.m_name].sort((a,b) => {
-                        return b[1] - a[1];
-                    });
                 }
                 // Return replay data
                 resolve(replayData);
@@ -324,12 +326,13 @@ class HotsGameData extends EventEmitter {
         let cacheContent = fs.readFileSync(storageFile);
         try {
             let cacheData = JSON.parse(cacheContent.toString());
-            if (cacheData.formatVersion == 4) {
+            if (cacheData.formatVersion == 5) {
                 this.languageOptions = cacheData.languageOptions;
                 this.maps = cacheData.maps;
                 this.heroes = cacheData.heroes;
                 this.replays = cacheData.replays;
                 this.playerPicks = cacheData.playerPicks;
+                this.playerBattleTags = cacheData.playerBattleTags;
             }
         } catch (e) {
             console.error("Failed to read gameData data!");
@@ -361,12 +364,13 @@ class HotsGameData extends EventEmitter {
         // Write specific type into cache
         let storageFile = this.getFile();
         fs.writeFileSync( storageFile, JSON.stringify({
-            formatVersion: 4,
+            formatVersion: 5,
             languageOptions: this.languageOptions,
             maps: this.maps,
             heroes: this.heroes,
             replays: this.replays,
-            playerPicks: this.playerPicks
+            playerPicks: this.playerPicks,
+            playerBattleTags: this.playerBattleTags
         }) );
     }
     update() {
@@ -421,7 +425,7 @@ class HotsGameData extends EventEmitter {
                 },
                 'jar': true
             }, (error, response, body) => {
-                if (error) {
+                if (error || (typeof response === "undefined")) {
                     reject(error);
                     return;
                 }
@@ -475,7 +479,7 @@ class HotsGameData extends EventEmitter {
                 },
                 'jar': true
             }, (error, response, body) => {
-                if (error) {
+                if (error || (typeof response === "undefined")) {
                     reject(error);
                     return;
                 }
@@ -672,6 +676,50 @@ class HotsGameData extends EventEmitter {
             this.progressTaskFailed();
             throw error;
         });
+    }
+
+    /**
+     * @param {HotsDraftPlayer} player
+     */
+    updatePlayerRecentPicks(player) {
+        let playerName = player.getName();
+        if (!this.playerBattleTags.hasOwnProperty(playerName)) {
+            // No battletags known for player! Unable to fetch recent picks.
+            return;
+        }
+        let playerPicks = {};
+        for (let i = 0; i < this.playerBattleTags[playerName].length; i++) {
+            let playerBattleTag = this.playerBattleTags[playerName][i];
+            if (!this.playerPicks.hasOwnProperty(playerBattleTag)) {
+                // No recent picks known for player! Fetch from hotsapi.net
+                this.playerPicks[playerBattleTag] = [];
+                let playerBattleTagParts = playerBattleTag.match(/^(.+)#([0-9]+)$/);
+                if (playerBattleTagParts) {
+                    let querySql = `
+                      SELECT p.hero as heroName, COUNT(*) as pickCount
+                      FROM \`cloud-project-179020.hotsapi.replays\` r, UNNEST(players) as p
+                      WHERE (p.battletag_name = @tagName) AND (p.battletag_id = @tagId)
+                      GROUP BY heroName
+                      ORDER BY pickCount DESC`;
+                    let queryOptions = {
+                        query: querySql,
+                        params: { tagName: playerBattleTagParts[1], tagId: parseInt(playerBattleTagParts[2]) }
+                    };
+                    bigQueryHotsApi.query(queryOptions).then((result) => {
+                        result[0].forEach((row) => {
+                            this.playerPicks[playerBattleTag].push([ row.heroName, row.pickCount ]);
+                        });
+                        playerPicks[playerBattleTag] = this.playerPicks[playerBattleTag];
+                        player.setRecentPicks(playerPicks);
+                        this.save();
+                    });
+                }
+                return;
+            } else {
+                playerPicks[playerBattleTag] = this.playerPicks[playerBattleTag];
+                player.setRecentPicks(playerPicks);
+            }
+        }
     }
     progressReset() {
         this.updateProgress.tasksPending = 1;

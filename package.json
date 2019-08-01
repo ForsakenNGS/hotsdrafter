@@ -73,9 +73,9 @@
           "unpack": "**/node_modules/screenshot-desktop/lib/win32/{app.manifest,screenCapture_1.3.2.bat}"
         },
         "icon": "build/icon.png",
-        "files": [
-          "!**/cache/*",
-          "!**/debug/*"
+        "ignore": [
+          "/cache",
+          "/debug"
         ]
       },
       "makers": [

@@ -21,6 +21,7 @@ class Config {
             playerName: "",
             gameDisplay: null,
             gameStorageDir: null,
+            gameTempDir: null,
             gameImproveDetection: true,
             googleBigQueryProject: null,
             googleBigQueryAuth: null,
@@ -106,6 +107,11 @@ class Config {
         // Detect settings if possible
         if (this.options.gameStorageDir === null) {
             this.options.gameStorageDir = HotsHelpers.detectGameStorageDir();
+            dirty = true;
+        }
+        // Detect settings if possible
+        if (this.options.gameTempDir === null) {
+            this.options.gameTempDir = HotsHelpers.detectGameTempDir();
             dirty = true;
         }
         if (dirty) {

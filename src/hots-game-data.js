@@ -677,6 +677,39 @@ class HotsGameData extends EventEmitter {
             throw error;
         });
     }
+    updateTempModTime() {
+        return this.updateTempFilesRecursive(
+            HotsHelpers.getConfig().getOption("gameTempDir")
+        );
+    }
+    updateTempFilesRecursive(baseDir) {
+        if (!fs.existsSync(baseDir)) {
+            return 0;
+        }
+        let files = fs.readdirSync(baseDir);
+        let maxMtime = 0;
+        try {
+            files.forEach((file) => {
+                let fileAbsolute = path.join(baseDir, file);
+                let fileLstat = fs.lstatSync(fileAbsolute);
+                if (fileLstat.isDirectory()) {
+                    let dirMtime = this.updateTempFilesRecursive(fileAbsolute);
+                    if (maxMtime < dirMtime) {
+                        maxMtime = dirMtime;
+                    }
+                } else {
+                    let fileStats = fs.statSync(fileAbsolute);
+                    if (fileStats.isDirectory())
+                    if (maxMtime < fileStats.mtimeMs) {
+                        maxMtime = fileStats.mtimeMs;
+                    }
+                }
+            });
+        } catch (error) {
+            // May happen when files or directories are deleted
+        }
+        return maxMtime;
+    }
 
     /**
      * @param {HotsDraftPlayer} player

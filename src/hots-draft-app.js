@@ -33,6 +33,7 @@ class HotsDraftApp extends EventEmitter {
         this.statusGameActiveLock = null;
         this.statusGameSaveFile = { file: null, mtime: 0, updated: 0 };
         this.statusGameLastReplay = { file: null, mtime: 0, updated: 0 };
+        this.statusTempModTime = 0;
         this.statusDraftData = null;
         this.statusDraftActive = false;
         this.statusDetectionRunning = false;
@@ -387,6 +388,10 @@ class HotsDraftApp extends EventEmitter {
         if (now < this.statusGameActiveLock) {
             return true;
         }
+        let tempFileAge = (now - this.statusTempModTime) / 1000;
+        if (tempFileAge < 60) {
+            return true;
+        }
         if (this.statusGameSaveFile !== null) {
             let latestSaveAge = (now - this.statusGameSaveFile.mtime) / 1000;
             if ((this.statusGameSaveFile.mtime - this.statusGameLastReplay.mtime) / 1000 > 30) {
@@ -523,6 +528,7 @@ class HotsDraftApp extends EventEmitter {
             return this.gameData.updateReplays();
         }).then(() => {
             // Get updated save and replay file info
+            this.statusTempModTime = this.gameData.updateTempModTime();
             this.statusGameSaveFile = this.gameData.getLatestSave();
             this.statusGameLastReplay = this.gameData.getLatestReplay();
             // Check if game state changed

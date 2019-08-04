@@ -6,8 +6,8 @@ let configuration = null;
 
 class HotsHelpers {
     static detectGameStorageDir() {
-        let username = os.userInfo().username.toString();
         if(os.platform() === "linux") {
+            let username = os.userInfo().username.toString();
             return HotsHelpers.detectGameStorageDirDocuments( path.join(os.homedir(), ".wine", "drive_c", "users", username, "My Documents") )
                 || HotsHelpers.detectGameStorageDirDocuments( path.join(os.homedir(), "Documents") );
         } else {
@@ -15,7 +15,24 @@ class HotsHelpers {
                 || HotsHelpers.detectGameStorageDirDocuments( path.join(os.homedir(), "Documents") );
         }
     }
+    static detectGameTempDir() {
+        if(os.platform() === "linux") {
+            let username = os.userInfo().username.toString();
+            return HotsHelpers.detectGameTempDirFolder( path.join(os.homedir(), ".wine", "drive_c", "users", username, "Temp") )
+                || HotsHelpers.detectGameTempDirFolder( path.join(os.homedir(), "Games", "battlenet", "drive_c", "users", username, "Temp") )
+                || HotsHelpers.detectGameTempDirFolder( path.join(os.homedir(), "Temp") );
+        } else {
+            return HotsHelpers.detectGameTempDirFolder( path.join(os.homedir(), "Temp") );
+        }
+    }
     static detectGameStorageDirDocuments(documentFolder) {
+        let target = path.join(documentFolder, "Heroes of the Storm");
+        if (fs.existsSync(target)) {
+            return target;
+        }
+        return null;
+    }
+    static detectGameTempDirFolder(documentFolder) {
         let target = path.join(documentFolder, "Heroes of the Storm");
         if (fs.existsSync(target)) {
             return target;

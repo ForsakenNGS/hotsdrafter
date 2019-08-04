@@ -75,6 +75,14 @@
             </div>
         </div>
         <div class="form-group row">
+            <label for="gameTempDir" class="col-sm-3 col-form-label">
+                Hots temp directory
+            </label>
+            <div class="col">
+                <input type="text" class="form-control" id="gameTempDir" value="{{ gui.config.gameTempDir }}" >
+            </div>
+        </div>
+        <div class="form-group row">
             <label for="googleBigQueryProject" class="col-sm-3 col-form-label">
                 Google BigQuery project id
             </label>
@@ -173,6 +181,28 @@
             let value = jQuery(this).val();
             if (fs.existsSync(value)) {
                 gui.setConfigOption("gameStorageDir", (value !== "" ? value : null));
+                jQuery(this).addClass("is-valid").removeClass("is-invalid");
+            } else {
+                jQuery(this).addClass("is-invalid").removeClass("is-valid");
+            }
+        });
+        // Change game temp directory
+        jQuery("#gameTempDir").on("click", function() {
+            let value = jQuery(this).val();
+            let dialogOptions = { properties: ['openDirectory'] };
+            if (value !== "") {
+                dialogOptions.defaultPath = value;
+            }
+            dialog.showOpenDialog(dialogOptions, (result) => {
+                if (typeof result !== "undefined") {
+                    jQuery(this).val(result[0]).trigger("change");
+                }
+            });
+        });
+        jQuery("#gameTempDir").on("change", function() {
+            let value = jQuery(this).val();
+            if (fs.existsSync(value)) {
+                gui.setConfigOption("gameTempDir", (value !== "" ? value : null));
                 jQuery(this).addClass("is-valid").removeClass("is-invalid");
             } else {
                 jQuery(this).addClass("is-invalid").removeClass("is-valid");

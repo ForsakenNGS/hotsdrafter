@@ -430,7 +430,7 @@ class HotsDraftScreen extends EventEmitter {
                         banImgCompare.write("debug/" + team.color + "_ban" + i + "_TestCompare.png");
                     }
                     let matchBestHero = null;
-                    let matchBestValue = 160;
+                    let matchBestValue = 180;
                     for (let heroId in this.banImages) {
                         let heroValue = HotsHelpers.imageCompare(banImgCompare, this.banImages[heroId]);
                         if (heroValue > matchBestValue) {
@@ -444,7 +444,7 @@ class HotsDraftScreen extends EventEmitter {
                             console.log("Ban "+i+": "+matchBestHero+" / "+matchBestValue);
                             this.banImages[matchBestHero].write("debug/" + team.color + "_ban" + i + "_BestCompare.png");
                         }
-                        let heroNameTranslated = this.app.gameData.getHeroName(matchBestHero);
+                        let heroNameTranslated = (matchBestHero === "_fail" ? "--FAIL--" : this.app.gameData.getHeroName(matchBestHero));
                         if (bans.names[i] !== heroNameTranslated) {
                             bans.names[i] = heroNameTranslated;
                         }

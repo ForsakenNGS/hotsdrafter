@@ -47,7 +47,7 @@
     "request": "^2.88.0",
     "screenshot-desktop": "^1.8.0",
     "seek-bzip": "^1.0.5",
-    "tesseract.js": "^2.0.0-alpha.11",
+    "tesseract.js": "2.0.0-alpha.11",
     "twig": "^1.13.3"
   },
   "config": {
